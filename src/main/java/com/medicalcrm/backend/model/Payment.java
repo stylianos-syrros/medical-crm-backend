@@ -4,7 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "payments")
 @Setter
@@ -31,7 +32,7 @@ public class Payment {
     private PaymentStatus status;
 
     @Column(nullable = false)
-    private LocalDate paidAt;
+    private LocalDateTime paidAt;
 
     @ManyToOne
     @JoinColumn(name = "appointment_id", nullable = false)
