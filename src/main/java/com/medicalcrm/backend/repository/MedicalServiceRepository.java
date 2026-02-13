@@ -9,4 +9,5 @@ public interface MedicalServiceRepository extends JpaRepository<MedicalService, 
 
     Optional<MedicalService> findByName(String name);
 
+    boolean existsByName(String name);
 }
