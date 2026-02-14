@@ -132,4 +132,20 @@ public class UserServiceImpl implements UserService {
         log.warn("User {} deleted", userId);
     }
 
+    @Override
+    public void updateEmail(String username, String newEmail) {
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        if (userRepository.existsByEmail(newEmail)) {
+            throw new BusinessException("Email already in use");
+        }
+
+        user.setEmail(newEmail);
+
+        log.info("User {} updated email", username);
+    }
+
+
 }

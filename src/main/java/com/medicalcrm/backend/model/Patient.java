@@ -28,9 +28,6 @@ public class Patient {
     @Column(nullable = false, unique = true)
     private String phone;
 
-    @Column(nullable = false, unique = true)
-    private String email;
-
     @Column(nullable = false, updatable = false)
     private LocalDate dateOfBirth;
 

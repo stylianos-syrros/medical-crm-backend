@@ -33,4 +33,7 @@ public interface UserService {
 
     void deleteUser(Long userId);
 
+    void updateEmail(String username, String newEmail);
+
 }
+
