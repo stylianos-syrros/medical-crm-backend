@@ -1,5 +1,9 @@
 package com.medicalcrm.backend.service.impl;
 
+import com.medicalcrm.backend.dto.request.CreateUserRequest;
+import com.medicalcrm.backend.dto.request.UpdateUserRequest;
+import com.medicalcrm.backend.dto.response.UserResponse;
+import com.medicalcrm.backend.mapper.UserMapper;
 import com.medicalcrm.backend.service.UserService;
 
 import com.medicalcrm.backend.exception.BusinessException;
@@ -29,39 +33,47 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public User createUser(String username,
-                          String password,
-                          String email,
-                          Role role){
-        if (userRepository.existsByUsername(username)){
+    public UserResponse createUser(CreateUserRequest request){
+
+        if (userRepository.existsByUsername(request.getUsername())){
             throw new BusinessException("Username already exists");
         }
 
-        if (userRepository.existsByEmail(email)){
+        if (userRepository.existsByEmail(request.getEmail())){
             throw new BusinessException("Email already exists");
         }
 
-        User user = new User();
+        User user = UserMapper.toEntity(request);
 
-        user.setUsername(username);
-        user.setEmail(email);
-        user.setRole(role);
         user.setEnabled(true);
-        user.setPassword(passwordEncoder.encode(password));
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         User saved = userRepository.save(user);
 
-        log.info("User created: {}", username);
+        log.info("User created: {}", saved.getUsername());
 
-        return saved;
+        return UserMapper.toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public User getById(Long id){
-        return userRepository.findById(id)
-                .orElseThrow(()->
-                        new NotFoundException("User not found"));
+    public UserResponse getById(Long id){
+        User user = getUserEntity(id);
+
+        return UserMapper.toResponse(user);
+    }
+
+
+    @Override
+    public UserResponse updateUser(Long userId, UpdateUserRequest request) {
+
+        User user = getUserEntity(userId);
+
+        UserMapper.updateEntity(user, request);
+
+        log.info("User {} updated", userId);
+
+        return UserMapper.toResponse(user);
     }
 
     @Override
@@ -74,21 +86,28 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<User> getAllUsers(){
-        return userRepository.findAll();
+    public List<UserResponse> getAllUsers(){
+        return userRepository.findAll()
+                .stream()
+                .map(UserMapper::toResponse)
+                .toList();
     }
 
     @Override
-    public void enableUser(Long userId){
-        User user = getById(userId);
+    public void enableUser(Long userId) {
+
+        User user = getUserEntity(userId);
+
         user.setEnabled(true);
 
         log.info("User {} enabled", userId);
     }
 
     @Override
-    public void disableUser(Long userId){
-        User user = getById(userId);
+    public void disableUser(Long userId) {
+
+        User user = getUserEntity(userId);
+
         user.setEnabled(false);
 
         log.info("User {} disabled", userId);
@@ -99,7 +118,7 @@ public class UserServiceImpl implements UserService {
                                String oldPassword,
                                String newPassword){
 
-        User user = getById(userId);
+        User user = getUserEntity(userId);
 
         if (!passwordEncoder.matches(oldPassword, user.getPassword())){
             throw new BusinessException("Wrong old password");
@@ -112,7 +131,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void changeRole(Long userId, Role role){
-        User user = getById(userId);
+        User user = getUserEntity(userId);
 
         user.setRole(role);
 
@@ -132,20 +151,11 @@ public class UserServiceImpl implements UserService {
         log.warn("User {} deleted", userId);
     }
 
-    @Override
-    public void updateEmail(String username, String newEmail) {
+    private User getUserEntity(Long userId) {
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-
-        if (userRepository.existsByEmail(newEmail)) {
-            throw new BusinessException("Email already in use");
-        }
-
-        user.setEmail(newEmail);
-
-        log.info("User {} updated email", username);
+        return userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new NotFoundException("User not found"));
     }
-
 
 }

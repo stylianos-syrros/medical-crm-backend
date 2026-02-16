@@ -1,5 +1,9 @@
 package com.medicalcrm.backend.service;
 
+import com.medicalcrm.backend.dto.request.CreateAppointmentRequest;
+import com.medicalcrm.backend.dto.request.UpdateAppointmentNotesRequest;
+import com.medicalcrm.backend.dto.request.UpdateAppointmentScheduleRequest;
+import com.medicalcrm.backend.dto.response.AppointmentResponse;
 import com.medicalcrm.backend.model.Appointment;
 import com.medicalcrm.backend.model.AppointmentStatus;
 
@@ -10,48 +14,43 @@ import java.util.List;
 public interface AppointmentService {
 
     // Patient
-    Appointment bookAppointment(Long patientId,
-                                Long doctorId,
-                                Long serviceId,
-                                LocalDate date,
-                                LocalTime time
+    AppointmentResponse bookAppointment(Long patientId, CreateAppointmentRequest request);
 
-    );
+    void cancelAppointment(Long patientId, Long appointmentId);
 
-    void cancelAppointment(Long appointmentId);
+    void rescheduleAppointment(Long patientId,
+                               Long appointmentId,
+                               UpdateAppointmentScheduleRequest request);
 
-    List<Appointment> getUpcomingAppointmentsForPatient(Long patientId);
+    List<AppointmentResponse> getUpcomingAppointmentsForPatient(Long patientId);
 
-    List<Appointment> getAppointmentHistoryForPatient(Long patientId);
+    List<AppointmentResponse> getAppointmentHistoryForPatient(Long patientId);
 
     // Doctor
-    List<Appointment> getUpcomingAppointmentsForDoctor(Long doctorId);
+    List<AppointmentResponse> getUpcomingAppointmentsForDoctor(Long doctorId);
 
-    List<Appointment> getAppointmentHistoryForDoctor(Long doctorId);
+    List<AppointmentResponse> getAppointmentHistoryForDoctor(Long doctorId);
 
-    List<Appointment> getAppointmentsForDoctorByStatus(Long doctorId, AppointmentStatus status);
+    List<AppointmentResponse> getAppointmentsForDoctorByStatus(Long doctorId, AppointmentStatus status);
 
     void cancelAppointmentByDoctor(Long doctorId, Long appointmentId);
 
     void completeAppointmentByDoctor(Long doctorId, Long appointmentId);
 
-    void addOrUpdateNotesByDoctor(Long doctorId,
+    void updateNotesByDoctor(Long doctorId,
                                   Long appointmentId,
-                                  String notes);
+                                  UpdateAppointmentNotesRequest request);
 
     // Admin
-    List<Appointment> getAllAppointments();
+    List<AppointmentResponse> getAllAppointments();
 
-    List<Appointment> getAppointmentsByDate(LocalDate date);
+    List<AppointmentResponse> getAppointmentsByDate(LocalDate date);
 
-    List<Appointment> getAppointmentsByStatus(AppointmentStatus status);
+    List<AppointmentResponse> getAppointmentsByStatus(AppointmentStatus status);
 
-    void updateNotesByAdmin(Long appointmentId,
-                            String notes);
+    List<AppointmentResponse> getAppointmentsByDoctor(Long doctorId);
 
-    List<Appointment> getAppointmentsByDoctor(Long doctorId);
-
-    List<Appointment> getAppointmentsByPatient(Long patientId);
+    List<AppointmentResponse> getAppointmentsByPatient(Long patientId);
 
 
 }

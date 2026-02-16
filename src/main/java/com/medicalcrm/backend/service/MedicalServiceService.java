@@ -1,5 +1,8 @@
 package com.medicalcrm.backend.service;
 
+import com.medicalcrm.backend.dto.request.CreateMedicalServiceRequest;
+import com.medicalcrm.backend.dto.request.UpdateMedicalServiceRequest;
+import com.medicalcrm.backend.dto.response.MedicalServiceResponse;
 import com.medicalcrm.backend.model.MedicalService;
 
 import java.math.BigDecimal;
@@ -7,20 +10,14 @@ import java.util.List;
 
 public interface MedicalServiceService {
 
-    MedicalService createService(String name,
-                                 String description,
-                                 BigDecimal price,
-                                 Integer duration);
+    MedicalServiceResponse createService(CreateMedicalServiceRequest request);
 
-    MedicalService updateService(Long serviceId,
-                                 String name,
-                                 String description,
-                                 BigDecimal price,
-                                 Integer duration);
+    MedicalServiceResponse updateService(Long serviceId,
+                                        UpdateMedicalServiceRequest request);
 
     void deleteService(Long serviceId);
 
-    List<MedicalService> getAllServices();
+    List<MedicalServiceResponse> getAllServices();
 
-    MedicalService getServiceById(Long serviceId);
+    MedicalServiceResponse getServiceById(Long serviceId);
 }

@@ -26,7 +26,7 @@ public class MedicalService {
     private String description;
 
     @Column(nullable = false)
-    private Integer durationMinutes;
+    private Integer duration;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;

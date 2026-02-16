@@ -1,7 +1,11 @@
 package com.medicalcrm.backend.service.impl;
 
+import com.medicalcrm.backend.dto.request.CreateMedicalServiceRequest;
+import com.medicalcrm.backend.dto.request.UpdateMedicalServiceRequest;
+import com.medicalcrm.backend.dto.response.MedicalServiceResponse;
 import com.medicalcrm.backend.exception.BusinessException;
 import com.medicalcrm.backend.exception.NotFoundException;
+import com.medicalcrm.backend.mapper.MedicalServiceMapper;
 import com.medicalcrm.backend.model.MedicalService;
 import com.medicalcrm.backend.repository.MedicalServiceRepository;
 import com.medicalcrm.backend.service.MedicalServiceService;
@@ -21,55 +25,36 @@ import java.util.List;
 @Transactional
 public class MedicalServiceServiceImpl implements MedicalServiceService {
 
-
     private final MedicalServiceRepository medicalServiceRepository;
 
     @Override
-    public MedicalService createService(String name,
-                                 String description,
-                                 BigDecimal price,
-                                 Integer duration){
+    public MedicalServiceResponse createService(CreateMedicalServiceRequest request) {
 
-        if (medicalServiceRepository.existsByName(name)){
-            throw new BusinessException("Medical service with this name already exists");
+        if (medicalServiceRepository.existsByName(request.getName())) {
+            throw new BusinessException("Service with this name already exists");
         }
 
-        MedicalService service = new MedicalService();
-
-        service.setName(name);
-        service.setDescription(description);
-        service.setDurationMinutes(duration);
-        service.setPrice(price);
+        MedicalService service = MedicalServiceMapper.toEntity(request);
 
         MedicalService saved = medicalServiceRepository.save(service);
 
-        log.info("Medical service created: {}", name);
+        log.info("Medical service created: {}", saved.getName());
 
-        return saved;
+        return MedicalServiceMapper.toResponse(saved);
     }
 
     @Override
-    public MedicalService updateService(Long serviceId,
-                         String name,
-                         String description,
-                         BigDecimal price,
-                         Integer duration){
+    public MedicalServiceResponse updateService(Long serviceId,
+                                                UpdateMedicalServiceRequest request) {
 
-        MedicalService service = getServiceById(serviceId);
+        MedicalService service = medicalServiceRepository.findById(serviceId)
+                .orElseThrow(() -> new NotFoundException("Service not found"));
 
-        if (!service.getName().equals(name) &&
-                medicalServiceRepository.existsByName(name)) {
-            throw new BusinessException("Medical service with this name already exists");
-        }
+        MedicalServiceMapper.updateEntity(service, request);
 
-        service.setName(name);
-        service.setDescription(description);
-        service.setPrice(price);
-        service.setDurationMinutes(duration);
+        log.info("Medical service {} updated", serviceId);
 
-        log.info("Medical service updated: {}", name);
-
-        return service;
+        return MedicalServiceMapper.toResponse(service);
     }
 
     @Override
@@ -86,18 +71,22 @@ public class MedicalServiceServiceImpl implements MedicalServiceService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MedicalService> getAllServices(){
+    public List<MedicalServiceResponse> getAllServices() {
 
-        return medicalServiceRepository.findAll();
+        return medicalServiceRepository.findAll()
+                .stream()
+                .map(MedicalServiceMapper::toResponse)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MedicalService getServiceById(Long serviceId){
+    public MedicalServiceResponse getServiceById(Long serviceId) {
 
-        return medicalServiceRepository.findById(serviceId)
-                .orElseThrow(()->
-                        new NotFoundException("Medical service not found"));
+        MedicalService service = medicalServiceRepository.findById(serviceId)
+                .orElseThrow(() -> new NotFoundException("Service not found"));
+
+        return MedicalServiceMapper.toResponse(service);
     }
 
 }

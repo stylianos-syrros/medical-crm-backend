@@ -1,13 +1,15 @@
 package com.medicalcrm.backend.service.impl;
 
+import com.medicalcrm.backend.dto.request.CreatePaymentRequest;
+import com.medicalcrm.backend.dto.response.AppointmentResponse;
+import com.medicalcrm.backend.dto.response.PaymentResponse;
 import com.medicalcrm.backend.exception.BusinessException;
 import com.medicalcrm.backend.exception.NotFoundException;
 
-import com.medicalcrm.backend.model.Appointment;
-import com.medicalcrm.backend.model.Patient;
-import com.medicalcrm.backend.model.Payment;
+import com.medicalcrm.backend.mapper.AppointmentMapper;
+import com.medicalcrm.backend.mapper.PaymentMapper;
+import com.medicalcrm.backend.model.*;
 
-import com.medicalcrm.backend.model.PaymentMethod;
 import com.medicalcrm.backend.repository.AppointmentRepository;
 import com.medicalcrm.backend.repository.PatientRepository;
 import com.medicalcrm.backend.repository.PaymentRepository;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -87,66 +90,53 @@ public class PaymentServiceImpl implements PaymentService{
     // PATIENT
 
     @Override
-    public Payment makePayment(Long patientId,
-                               Long appointmentId,
-                               BigDecimal amount,
-                               PaymentMethod method){
-
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException("Payment amount must be positive");
-        }
-
-        if (method == null){
-            throw new BusinessException("Payment method is required");
-        }
-
-        Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(()->
-                        new NotFoundException(("Appointment not found")));
+    public PaymentResponse makePayment(Long patientId, CreatePaymentRequest request) {
 
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() ->
-                        new NotFoundException("Patient not found"));
+                .orElseThrow(() -> new NotFoundException("Patient not found"));
 
-        if (!appointment.getPatient().getId().equals(patientId)){
-            throw new BusinessException(
-                    "You can only pay your own appointments");
+        Appointment appointment = appointmentRepository.findById(request.getAppointmentId())
+                .orElseThrow(() -> new NotFoundException("Appointment not found"));
+
+        if (!appointment.getPatient().getId().equals(patientId)) {
+            throw new BusinessException("This appointment does not belong to patient");
         }
 
-        BigDecimal totalPaid = paymentRepository.sumAmountByAppointmentId(appointmentId);
+        // συνολικό ποσό που έχει πληρωθεί ήδη
+        BigDecimal totalPaid = Optional.ofNullable(
+                paymentRepository.sumAmountByAppointmentId(appointment.getId())
+        ).orElse(BigDecimal.ZERO);
+
         BigDecimal price = appointment.getService().getPrice();
 
         BigDecimal remaining = price.subtract(totalPaid);
 
         if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException(
-                    "Appointment already fully paid");
+            throw new BusinessException("Appointment already fully paid");
         }
 
-        if (amount.compareTo(remaining) > 0) {
-            throw new BusinessException(
-                    "Amount exceeds remaining amount");
+        BigDecimal paymentAmount = request.getAmount();
+
+        if (paymentAmount.compareTo(remaining) > 0) {
+            throw new BusinessException("Payment exceeds remaining amount");
         }
 
-        Payment payment = new Payment();
+        Payment payment = PaymentMapper.toEntity(request, appointment, patient);
 
-        payment.setAppointment(appointment);
-        payment.setPaidBy(patient);
-        payment.setAmount(amount);
-        payment.setMethod(method);
+        payment.setStatus(PaymentStatus.PAID);
         payment.setPaidAt(LocalDateTime.now());
 
         Payment saved = paymentRepository.save(payment);
 
-        log.info("Patient {} paid {} for appointment {} via {}",
-                patientId, amount, appointmentId, method);
+        log.info("Patient {} paid {} for appointment {}",
+                patientId, paymentAmount, appointment.getId());
 
-        return saved;
+        return PaymentMapper.toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Appointment> getPaidAppointmentsByPatient(Long patientId) {
+    public List<AppointmentResponse> getPaidAppointmentsByPatient(Long patientId) {
 
         List<Appointment> appointments =
                 appointmentRepository.findByPatientId(patientId);
@@ -154,22 +144,22 @@ public class PaymentServiceImpl implements PaymentService{
         return appointments.stream()
                 .filter(a -> {
 
-                    BigDecimal paid =
-                            paymentRepository
-                                    .sumAmountByAppointmentId(a.getId());
+                    BigDecimal paid = Optional.ofNullable(
+                            paymentRepository.sumAmountByAppointmentId(a.getId())
+                    ).orElse(BigDecimal.ZERO);
 
-                    BigDecimal price =
-                            a.getService().getPrice();
+                    BigDecimal price = a.getService().getPrice();
 
                     return paid.compareTo(price) >= 0;
                 })
+                .map(AppointmentMapper::toResponse)
                 .toList();
     }
 
+
     @Override
     @Transactional(readOnly = true)
-
-    public List<Appointment> getUnpaidAppointmentsByPatient(Long patientId) {
+    public List<AppointmentResponse> getUnpaidAppointmentsByPatient(Long patientId) {
 
         List<Appointment> appointments =
                 appointmentRepository.findByPatientId(patientId);
@@ -177,15 +167,15 @@ public class PaymentServiceImpl implements PaymentService{
         return appointments.stream()
                 .filter(a -> {
 
-                    BigDecimal paid =
-                            paymentRepository
-                                    .sumAmountByAppointmentId(a.getId());
+                    BigDecimal paid = Optional.ofNullable(
+                            paymentRepository.sumAmountByAppointmentId(a.getId())
+                    ).orElse(BigDecimal.ZERO);
 
-                    BigDecimal price =
-                            a.getService().getPrice();
+                    BigDecimal price = a.getService().getPrice();
 
                     return paid.compareTo(price) < 0;
                 })
+                .map(AppointmentMapper::toResponse)
                 .toList();
     }
 
@@ -225,8 +215,11 @@ public class PaymentServiceImpl implements PaymentService{
 
     @Override
     @Transactional(readOnly = true)
-    public List<Payment> getAllPayments(){
-        return paymentRepository.findAll();
+    public List<PaymentResponse> getAllPayments() {
 
+        return paymentRepository.findAll()
+                .stream()
+                .map(PaymentMapper::toResponse)
+                .toList();
     }
 }

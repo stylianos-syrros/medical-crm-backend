@@ -1,5 +1,13 @@
 package com.medicalcrm.backend.service.impl;
 
+import com.medicalcrm.backend.dto.request.CreatePatientRequest;
+import com.medicalcrm.backend.dto.request.UpdatePatientRequest;
+import com.medicalcrm.backend.dto.response.AppointmentResponse;
+import com.medicalcrm.backend.dto.response.DoctorResponse;
+import com.medicalcrm.backend.dto.response.PatientResponse;
+import com.medicalcrm.backend.mapper.AppointmentMapper;
+import com.medicalcrm.backend.mapper.DoctorMapper;
+import com.medicalcrm.backend.mapper.PatientMapper;
 import com.medicalcrm.backend.model.Patient;
 import com.medicalcrm.backend.service.PatientService;
 
@@ -26,54 +34,92 @@ public class PatientServiceImpl implements PatientService {
     private final PatientRepository patientRepository;
     private final AppointmentRepository appointmentRepository;
     private final PaymentRepository paymentRepository;
+    private final UserRepository userRepository;
 
     @Override
-    public Patient getProfile(Long patientId){
-        return patientRepository.findById(patientId)
-                .orElseThrow(()->
-                        new NotFoundException("Patient not found"));
+    public PatientResponse createPatient(CreatePatientRequest request) {
+
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        Patient patient = PatientMapper.toEntity(request, user);
+
+        Patient saved = patientRepository.save(patient);
+
+        log.info("Patient profile created for user {}", user.getId());
+
+        return PatientMapper.toResponse(saved);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public PatientResponse getProfile(Long patientId) {
+
+        Patient patient = getPatientEntity(patientId);
+
+        return PatientMapper.toResponse(patient);
     }
 
     @Override
-    public Patient updateProfile(Long patientId,
-                          String firstName,
-                          String lastName,
-                          String phone){
-        Patient patient = getProfile(patientId);
+    public PatientResponse updateProfile(Long patientId,
+                                         UpdatePatientRequest request) {
 
-        patient.setFirstName(firstName);
-        patient.setLastName(lastName);
-        patient.setPhone(phone);
+        Patient patient = getPatientEntity(patientId);
+
+        PatientMapper.updateEntity(patient, request);
 
         log.info("Patient {} updated profile", patientId);
 
-        return patient;
+        return PatientMapper.toResponse(patient);
     }
+
+
+    // DOCTOR && APPOINTMENT
+    @Override
+    @Transactional(readOnly = true)
+    public List<DoctorResponse> getMyDoctors(Long patientId){
+
+        return appointmentRepository
+                .findDistinctDoctorsByPatientId(patientId)
+                .stream()
+                .map(DoctorMapper::toResponse)
+                .toList();
+    }
+
 
     @Override
     @Transactional(readOnly = true)
-    public List<Doctor> getMyDoctors(Long patientId){
-        return appointmentRepository.
-                findDistinctDoctorsByPatientId(patientId);
+    public List<AppointmentResponse> getMyAppointments(Long patientId){
+
+        return appointmentRepository.findByPatientId(patientId)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
+
 
     @Override
     @Transactional(readOnly = true)
-    public List<Appointment> getMyAppointments(Long patientId){
-        return appointmentRepository.findByPatientId(patientId);
+    public List<AppointmentResponse> getMyAppointmentHistory(Long patientId){
+
+        return appointmentRepository
+                .findByPatientIdAndStatus(patientId, AppointmentStatus.COMPLETED)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
+
 
     @Override
     @Transactional(readOnly = true)
-    public List<Appointment> getMyAppointmentHistory(Long patientId){
-        return appointmentRepository.findByPatientIdAndStatus(patientId, AppointmentStatus.COMPLETED);
+    public List<AppointmentResponse> getMyUpcomingAppointments(Long patientId){
+
+        return appointmentRepository
+                .findByPatientIdAndStatus(patientId, AppointmentStatus.SCHEDULED)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<Appointment> getMyUpcomingAppointments(Long patientId){
-        return appointmentRepository.findByPatientIdAndStatus(patientId, AppointmentStatus.SCHEDULED);
-    }
 
     @Override
     public void cancelAppointment(Long patientId, Long appointmentId){
@@ -94,5 +140,12 @@ public class PatientServiceImpl implements PatientService {
         appointment.setStatus(AppointmentStatus.CANCELLED);
 
         log.info("Patient {} cancelled appointment {}",patientId, appointmentId);
+    }
+
+    private Patient getPatientEntity(Long patientId) {
+
+        return patientRepository.findById(patientId)
+                .orElseThrow(() ->
+                        new NotFoundException("Patient not found"));
     }
 }

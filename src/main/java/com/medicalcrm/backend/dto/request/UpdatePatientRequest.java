@@ -22,6 +22,7 @@ public class UpdatePatientRequest {
     )
     private String phone;
 
+    private String notes;
 
     @Past(message = "Date of birth must be in the past")
     private LocalDate dateOfBirth;

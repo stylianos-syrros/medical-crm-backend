@@ -1,7 +1,12 @@
 package com.medicalcrm.backend.service.impl;
 
+import com.medicalcrm.backend.dto.request.CreateAppointmentRequest;
+import com.medicalcrm.backend.dto.request.UpdateAppointmentNotesRequest;
+import com.medicalcrm.backend.dto.request.UpdateAppointmentScheduleRequest;
+import com.medicalcrm.backend.dto.response.AppointmentResponse;
 import com.medicalcrm.backend.exception.BusinessException;
 import com.medicalcrm.backend.exception.NotFoundException;
+import com.medicalcrm.backend.mapper.AppointmentMapper;
 import com.medicalcrm.backend.model.*;
 import com.medicalcrm.backend.model.AppointmentStatus;
 
@@ -17,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional; //?
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 
 
@@ -34,113 +38,141 @@ public class AppointmentServiceImpl  implements AppointmentService{
     private final PaymentRepository paymentRepository;
 
     // PATIENT
-
     @Override
-    public Appointment bookAppointment(Long patientId,
-                                       Long doctorId,
-                                       Long serviceId,
-                                       LocalDate date,
-                                       LocalTime time) {
+    public AppointmentResponse bookAppointment(Long patientId,
+                                               CreateAppointmentRequest request) {
 
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() ->
                         new NotFoundException("Patient not found"));
 
 
-        Doctor doctor = doctorRepository.findById(doctorId)
+        Doctor doctor = doctorRepository.findById(request.getDoctorId())
                 .orElseThrow(() ->
                         new NotFoundException("Doctor not found"));
 
-        MedicalService service = medicalServiceRepository.findById(serviceId)
+        MedicalService service = medicalServiceRepository.findById(request.getServiceId())
                 .orElseThrow(() ->
                         new NotFoundException("Service not found"));
 
-        Appointment appointment = new Appointment();
-
-        appointment.setPatient(patient);
-        appointment.setDoctor(doctor);
-        appointment.setService(service);
-        appointment.setAppointmentDate(date);
-        appointment.setAppointmentTime(time);
-        appointment.setStatus(AppointmentStatus.SCHEDULED);
-        appointment.setNotes(null);
+        Appointment appointment = AppointmentMapper.toEntity(request, patient, doctor, service);
 
         Appointment saved = appointmentRepository.save(appointment);
 
         log.info("Patient {} booked appointment {}", patientId, saved.getId());
 
-        return saved;
+        return AppointmentMapper.toResponse(saved);
     }
 
     @Override
-    public void cancelAppointment(Long appointmentId) {
+    public void cancelAppointment(Long patientId, Long appointmentId) {
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() ->
                         new NotFoundException("Appointment not found"));
 
-        if (paymentRepository.existsByAppointmentId(appointmentId)) {
-            log.warn("Patient cancel denied for appointment {}", appointmentId);
+        if (!appointment.getPatient().getId().equals(patientId)) {
+            throw new BusinessException("Not your appointment");
+        }
 
-            throw new BusinessException(
-                    "Cannot cancel appointment with payments");
+        boolean hasPayments =
+                paymentRepository.existsByAppointmentId(appointmentId);
+
+        if (hasPayments) {
+            throw new BusinessException("Cannot cancel paid appointment");
         }
 
         appointment.setStatus(AppointmentStatus.CANCELLED);
 
-        log.info("Appointment {} cancelled by patient", appointmentId);
+        log.info("Patient {} cancelled appointment {}", patientId, appointmentId);
+    }
+
+    @Override
+    public void rescheduleAppointment(Long patientId,
+                                      Long appointmentId,
+                                      UpdateAppointmentScheduleRequest request) {
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() ->
+                        new NotFoundException("Appointment not found"));
+
+        if (!appointment.getPatient().getId().equals(patientId)) {
+            throw new BusinessException("Not your appointment");
+        }
+
+        if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
+            throw new BusinessException("Only scheduled appointments can be rescheduled");
+        }
+
+        AppointmentMapper.updateSchedule(appointment, request);
+
+        log.info("Patient {} rescheduled appointment {}", patientId, appointmentId);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppointmentResponse> getUpcomingAppointmentsForPatient(Long patientId) {
+
+        return appointmentRepository.findByPatientIdAndStatus(
+                patientId,
+                AppointmentStatus.SCHEDULED)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
+
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Appointment> getUpcomingAppointmentsForPatient(Long patientId) {
+    public List<AppointmentResponse> getAppointmentHistoryForPatient(Long patientId){
 
         return appointmentRepository.findByPatientIdAndStatus(
                 patientId,
-                AppointmentStatus.SCHEDULED);
-
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Appointment> getAppointmentHistoryForPatient(Long patientId){
-
-        return appointmentRepository.findByPatientIdAndStatus(
-                patientId,
-                AppointmentStatus.COMPLETED);
+                AppointmentStatus.COMPLETED)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
 
     // DOCTOR
 
     @Override
     @Transactional(readOnly = true)
-    public List<Appointment> getUpcomingAppointmentsForDoctor(Long doctorId) {
+    public List<AppointmentResponse> getUpcomingAppointmentsForDoctor(Long doctorId) {
 
         return appointmentRepository
                 .findByDoctorIdAndStatus(
                         doctorId,
-                        AppointmentStatus.SCHEDULED
-                );
+                        AppointmentStatus.SCHEDULED)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Appointment> getAppointmentHistoryForDoctor(Long doctorId) {
+    public List<AppointmentResponse> getAppointmentHistoryForDoctor(Long doctorId) {
 
         return appointmentRepository
                 .findByDoctorIdAndStatus(
                         doctorId,
-                        AppointmentStatus.COMPLETED
-                );
+                        AppointmentStatus.COMPLETED)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Appointment> getAppointmentsForDoctorByStatus(Long doctorId,
+    public List<AppointmentResponse> getAppointmentsForDoctorByStatus(Long doctorId,
                                                               AppointmentStatus status) {
 
         return appointmentRepository
-                .findByDoctorIdAndStatus(doctorId, status);
+                .findByDoctorIdAndStatus(doctorId, status)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
 
     @Override
@@ -188,12 +220,15 @@ public class AppointmentServiceImpl  implements AppointmentService{
 
         appointment.setStatus(AppointmentStatus.COMPLETED);
 
+        log.info("Doctor {} completed appointment {}", doctorId, appointmentId);
+
+
     }
 
     @Override
-    public void addOrUpdateNotesByDoctor(Long doctorId,
+    public void updateNotesByDoctor(Long doctorId,
                                          Long appointmentId,
-                                         String notes) {
+                                         UpdateAppointmentNotesRequest request) {
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new NotFoundException("Appointment not found"));
@@ -202,7 +237,7 @@ public class AppointmentServiceImpl  implements AppointmentService{
             throw new BusinessException("Not your appointment");
         }
 
-        appointment.setNotes(notes);
+        AppointmentMapper.updateNotes(appointment, request);
 
         log.info("Doctor {} updated notes for appointment {}",
                 doctorId, appointmentId);
@@ -213,50 +248,53 @@ public class AppointmentServiceImpl  implements AppointmentService{
 
     @Override
     @Transactional(readOnly = true)
-    public List<Appointment> getAllAppointments() {
+    public List<AppointmentResponse> getAllAppointments() {
 
-        return appointmentRepository.findAll();
+        return appointmentRepository.findAll()
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppointmentResponse> getAppointmentsByDate(LocalDate date) {
+
+        return appointmentRepository.findByAppointmentDate(date)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Appointment> getAppointmentsByDate(LocalDate date) {
+    public List<AppointmentResponse> getAppointmentsByStatus(AppointmentStatus status) {
 
-        return appointmentRepository.findByAppointmentDate(date);
+        return appointmentRepository.findByStatus(status)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Appointment> getAppointmentsByStatus(AppointmentStatus status) {
+        public List<AppointmentResponse> getAppointmentsByDoctor(Long doctorId) {
 
-        return appointmentRepository.findByStatus(status);
-    }
-
-    @Override
-    public void updateNotesByAdmin(Long appointmentId,
-                                   String notes) {
-
-        Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new NotFoundException("Appointment not found"));
-
-        appointment.setNotes(notes);
-
-        log.info("Admin updated notes for appointment {}",
-                appointmentId);
+        return appointmentRepository.findByDoctorId(doctorId)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-        public List<Appointment> getAppointmentsByDoctor(Long doctorId) {
+    public List<AppointmentResponse> getAppointmentsByPatient(Long patientId) {
 
-        return appointmentRepository.findByDoctorId(doctorId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Appointment> getAppointmentsByPatient(Long patientId) {
-
-        return appointmentRepository.findByPatientId(patientId);
+        return appointmentRepository.findByPatientId(patientId)
+                .stream()
+                .map(AppointmentMapper::toResponse)
+                .toList();
     }
 
 }

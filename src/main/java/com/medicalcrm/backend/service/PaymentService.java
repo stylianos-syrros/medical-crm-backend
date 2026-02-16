@@ -1,5 +1,8 @@
 package com.medicalcrm.backend.service;
 
+import com.medicalcrm.backend.dto.request.CreatePaymentRequest;
+import com.medicalcrm.backend.dto.response.AppointmentResponse;
+import com.medicalcrm.backend.dto.response.PaymentResponse;
 import com.medicalcrm.backend.model.Payment;
 import com.medicalcrm.backend.model.Appointment;
 import com.medicalcrm.backend.model.PaymentMethod;
@@ -13,31 +16,22 @@ public interface PaymentService {
     // DOCTOR
 
     BigDecimal getTotalReceivedByDoctor(Long doctorId);
-
     BigDecimal getTotalPendingByDoctor(Long doctorId);
-
     BigDecimal getTotalExpectedByDoctor(Long doctorId);
-
 
     // PATIENT
 
-    Payment makePayment(Long patientId,
-                        Long appointmentId,
-                        BigDecimal amount,
-                        PaymentMethod method);
+    PaymentResponse makePayment(Long patientId, CreatePaymentRequest request);
 
-    List<Appointment> getPaidAppointmentsByPatient(Long patientId);
-
-    List<Appointment> getUnpaidAppointmentsByPatient(Long patientId);
+    List<AppointmentResponse> getPaidAppointmentsByPatient(Long patientId);
+    List<AppointmentResponse> getUnpaidAppointmentsByPatient(Long patientId);
 
     BigDecimal getTotalPaidByPatient(Long patientId);
-
     BigDecimal getTotalPendingByPatient(Long patientId);
-
     BigDecimal getTotalExpectedByPatient(Long patientId);
 
     // ADMIN
 
-    List<Payment> getAllPayments();
+    List<PaymentResponse> getAllPayments();
 
 }

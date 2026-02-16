@@ -1,25 +1,29 @@
 package com.medicalcrm.backend.service;
 
+import com.medicalcrm.backend.dto.request.CreatePatientRequest;
+import com.medicalcrm.backend.dto.request.UpdatePatientRequest;
+import com.medicalcrm.backend.dto.response.AppointmentResponse;
+import com.medicalcrm.backend.dto.response.DoctorResponse;
+import com.medicalcrm.backend.dto.response.PatientResponse;
 import com.medicalcrm.backend.model.*;
 
 import java.util.List;
 
 public interface PatientService {
 
-    Patient getProfile(Long patientId);
+    PatientResponse createPatient(CreatePatientRequest request);
 
-    Patient updateProfile(Long patientId,
-                          String firstName,
-                          String lastName,
-                          String phone);
+    PatientResponse getProfile(Long patientId);
 
-    List<Doctor> getMyDoctors(Long patientId);
+    PatientResponse updateProfile(Long patientId, UpdatePatientRequest request);
 
-    List<Appointment> getMyAppointments(Long patientId);
+    List<DoctorResponse> getMyDoctors(Long patientId);
 
-    List<Appointment> getMyAppointmentHistory(Long patientId);
+    List<AppointmentResponse> getMyAppointments(Long patientId);
 
-    List<Appointment> getMyUpcomingAppointments(Long patientId);
+    List<AppointmentResponse> getMyAppointmentHistory(Long patientId);
+
+    List<AppointmentResponse> getMyUpcomingAppointments(Long patientId);
 
     void cancelAppointment(Long patientId,
                            Long appointmentId);

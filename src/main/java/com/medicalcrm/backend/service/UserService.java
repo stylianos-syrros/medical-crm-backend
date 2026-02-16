@@ -1,5 +1,8 @@
 package com.medicalcrm.backend.service;
 
+import com.medicalcrm.backend.dto.request.CreateUserRequest;
+import com.medicalcrm.backend.dto.request.UpdateUserRequest;
+import com.medicalcrm.backend.dto.response.UserResponse;
 import com.medicalcrm.backend.model.User;
 import com.medicalcrm.backend.model.Role;
 
@@ -8,17 +11,15 @@ import java.util.List;
 
 public interface UserService {
 
-    User createUser(String username,
-                    String password,
-                    String email,
-                    Role role
-    );
+    UserResponse createUser(CreateUserRequest request);
 
-    User getById(Long id);
+    UserResponse getById(Long id);
+
+    UserResponse updateUser(Long userId, UpdateUserRequest request);
 
     User getByUsername(String username);
 
-    List<User> getAllUsers();
+    List<UserResponse> getAllUsers();
 
     void enableUser(Long userId);
 
@@ -32,8 +33,5 @@ public interface UserService {
     void changeRole(Long usrId, Role role);
 
     void deleteUser(Long userId);
-
-    void updateEmail(String username, String newEmail);
-
 }
 
