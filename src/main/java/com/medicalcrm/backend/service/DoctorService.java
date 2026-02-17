@@ -25,8 +25,6 @@ public interface DoctorService {
 
     List<AppointmentResponse> getMyUpcomingAppointments(Long doctorId);
 
-    void addNotes(Long doctorId,
-                  Long appointmentId,
-                  String notes);
+
 
 }

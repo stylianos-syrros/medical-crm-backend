@@ -6,13 +6,13 @@ import com.medicalcrm.backend.security.JwtService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.*;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Valid
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -29,13 +29,16 @@ public class AuthController {
                 )
         );
 
-        String role = authentication.getAuthorities()
-                .iterator().next().getAuthority();
+        String username = authentication.getName();
 
-        String token = jwtService.generateToken(
-                request.getUsername(),
-                role
-        );
+        String role = authentication.getAuthorities()
+                .stream()
+                .findFirst()
+                .map(GrantedAuthority::getAuthority)
+                .orElseThrow();
+
+
+        String token = jwtService.generateToken(username,role);
 
         return ResponseEntity.ok(new LoginResponse(token));
     }

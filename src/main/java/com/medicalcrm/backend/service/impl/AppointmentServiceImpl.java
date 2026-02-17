@@ -10,6 +10,11 @@ import com.medicalcrm.backend.mapper.AppointmentMapper;
 import com.medicalcrm.backend.model.*;
 import com.medicalcrm.backend.model.AppointmentStatus;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
 import com.medicalcrm.backend.repository.*;
 
 import com.medicalcrm.backend.service.AppointmentService;
@@ -46,6 +51,7 @@ public class AppointmentServiceImpl  implements AppointmentService{
                 .orElseThrow(() ->
                         new NotFoundException("Patient not found"));
 
+        checkPatientOwnership(patient);
 
         Doctor doctor = doctorRepository.findById(request.getDoctorId())
                 .orElseThrow(() ->
@@ -70,6 +76,9 @@ public class AppointmentServiceImpl  implements AppointmentService{
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() ->
                         new NotFoundException("Appointment not found"));
+
+        Patient patient = appointment.getPatient();
+        checkPatientOwnership(patient);
 
         if (!appointment.getPatient().getId().equals(patientId)) {
             throw new BusinessException("Not your appointment");
@@ -96,6 +105,9 @@ public class AppointmentServiceImpl  implements AppointmentService{
                 .orElseThrow(() ->
                         new NotFoundException("Appointment not found"));
 
+        Patient patient = appointment.getPatient();
+        checkPatientOwnership(patient);
+
         if (!appointment.getPatient().getId().equals(patientId)) {
             throw new BusinessException("Not your appointment");
         }
@@ -114,6 +126,9 @@ public class AppointmentServiceImpl  implements AppointmentService{
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getUpcomingAppointmentsForPatient(Long patientId) {
 
+        Patient patient = getPatientEntity(patientId);
+        checkPatientOwnership(patient);
+
         return appointmentRepository.findByPatientIdAndStatus(
                 patientId,
                 AppointmentStatus.SCHEDULED)
@@ -126,6 +141,9 @@ public class AppointmentServiceImpl  implements AppointmentService{
     @Override
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getAppointmentHistoryForPatient(Long patientId){
+
+        Patient patient = getPatientEntity(patientId);
+        checkPatientOwnership(patient);
 
         return appointmentRepository.findByPatientIdAndStatus(
                 patientId,
@@ -141,6 +159,9 @@ public class AppointmentServiceImpl  implements AppointmentService{
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getUpcomingAppointmentsForDoctor(Long doctorId) {
 
+        Doctor doctor = getDoctorEntity(doctorId);
+        checkDoctorOwnership(doctor);
+
         return appointmentRepository
                 .findByDoctorIdAndStatus(
                         doctorId,
@@ -153,6 +174,9 @@ public class AppointmentServiceImpl  implements AppointmentService{
     @Override
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getAppointmentHistoryForDoctor(Long doctorId) {
+
+        Doctor doctor = getDoctorEntity(doctorId);
+        checkDoctorOwnership(doctor);
 
         return appointmentRepository
                 .findByDoctorIdAndStatus(
@@ -167,6 +191,9 @@ public class AppointmentServiceImpl  implements AppointmentService{
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getAppointmentsForDoctorByStatus(Long doctorId,
                                                               AppointmentStatus status) {
+
+        Doctor doctor = getDoctorEntity(doctorId);
+        checkDoctorOwnership(doctor);
 
         return appointmentRepository
                 .findByDoctorIdAndStatus(doctorId, status)
@@ -183,9 +210,8 @@ public class AppointmentServiceImpl  implements AppointmentService{
                 .orElseThrow(() ->
                         new NotFoundException("Appointment not found"));
 
-        if (!appointment.getDoctor().getId().equals(doctorId)) {
-            throw new BusinessException("You cannot cancel another doctor's appointment");
-        }
+        Doctor doctor = getDoctorEntity(doctorId);
+        checkDoctorOwnership(doctor);
 
         if (paymentRepository.existsByAppointmentId(appointmentId)){
             throw new BusinessException("Cannot cancel appointment with payments");
@@ -204,12 +230,14 @@ public class AppointmentServiceImpl  implements AppointmentService{
                 .orElseThrow(()->
                         new NotFoundException("Appointment not found"));
 
-        if (!appointment.getDoctor().getId().equals(doctorId)) {
-            throw new BusinessException(
-                    "You cannot complete another doctor's appointment");
-        }
+        Doctor doctor = getDoctorEntity(doctorId);
+        checkDoctorOwnership(doctor);
 
         BigDecimal totalPaid = paymentRepository.sumAmountByAppointmentId(appointmentId);
+
+        if (totalPaid == null) {
+            totalPaid = BigDecimal.ZERO;
+        }
 
         BigDecimal price = appointment.getService().getPrice();
 
@@ -233,9 +261,8 @@ public class AppointmentServiceImpl  implements AppointmentService{
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new NotFoundException("Appointment not found"));
 
-        if (!appointment.getDoctor().getId().equals(doctorId)) {
-            throw new BusinessException("Not your appointment");
-        }
+        Doctor doctor = appointment.getDoctor();
+        checkDoctorOwnership(doctor);
 
         AppointmentMapper.updateNotes(appointment, request);
 
@@ -295,6 +322,49 @@ public class AppointmentServiceImpl  implements AppointmentService{
                 .stream()
                 .map(AppointmentMapper::toResponse)
                 .toList();
+    }
+
+    // HELPERS
+
+    private Doctor getDoctorEntity(Long doctorId) {
+        return doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new NotFoundException("Doctor not found"));
+    }
+
+    private Patient getPatientEntity(Long patientId) {
+
+        return patientRepository.findById(patientId)
+                .orElseThrow(() ->
+                        new NotFoundException("Patient not found"));
+    }
+
+    private void checkDoctorOwnership(Doctor doctor) {
+
+        if (!isAdmin() &&
+                !doctor.getUser().getUsername().equals(getCurrentUsername())) {
+            throw new AccessDeniedException("Access denied");
+        }
+    }
+
+    private Authentication getAuthentication() {
+        return SecurityContextHolder.getContext().getAuthentication();
+    }
+
+    private String getCurrentUsername() {
+        return getAuthentication().getName();
+    }
+
+    private boolean isAdmin() {
+        return getAuthentication().getAuthorities()
+                .contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+    }
+
+    private void checkPatientOwnership(Patient patient) {
+
+        if (!isAdmin() &&
+                !patient.getUser().getUsername().equals(getCurrentUsername())) {
+            throw new AccessDeniedException("Access denied");
+        }
     }
 
 }

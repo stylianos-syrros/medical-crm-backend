@@ -32,8 +32,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     @Query("SELECT COALESCE(SUM(a.service.price),0) FROM Appointment a WHERE a.patient.id = :patientId")
     BigDecimal sumAppointmentPricesByPatient(@Param("patientId") Long patietId);
 
-    //Long patient(Patient patient);
-
     @Query("SELECT DISTINCT a.patient FROM Appointment a WHERE a.doctor.id = :doctorId")
     List<Patient> findDistinctPatientsByDoctorId(Long doctorId);
 

@@ -3,10 +3,13 @@ package com.medicalcrm.backend.security;
 import com.medicalcrm.backend.model.User;
 import com.medicalcrm.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -15,6 +18,7 @@ public class CustomUserDetailsService implements UserDetailsService{
     private final UserRepository userRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username)
         throws UsernameNotFoundException{
 
@@ -25,8 +29,7 @@ public class CustomUserDetailsService implements UserDetailsService{
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getPassword(),
-                Collections.singleton(() ->
-                        "ROLE_" + user.getRole().name())
+                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()))
         );
     }
 }

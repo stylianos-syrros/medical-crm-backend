@@ -15,11 +15,14 @@ import com.medicalcrm.backend.exception.*;
 import com.medicalcrm.backend.model.*;
 import com.medicalcrm.backend.model.AppointmentStatus;
 import com.medicalcrm.backend.repository.*;
-import com.medicalcrm.backend.service.PatientService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +58,7 @@ public class PatientServiceImpl implements PatientService {
     public PatientResponse getProfile(Long patientId) {
 
         Patient patient = getPatientEntity(patientId);
+        checkOwnership(patient);
 
         return PatientMapper.toResponse(patient);
     }
@@ -64,6 +68,7 @@ public class PatientServiceImpl implements PatientService {
                                          UpdatePatientRequest request) {
 
         Patient patient = getPatientEntity(patientId);
+        checkOwnership(patient);
 
         PatientMapper.updateEntity(patient, request);
 
@@ -78,6 +83,9 @@ public class PatientServiceImpl implements PatientService {
     @Transactional(readOnly = true)
     public List<DoctorResponse> getMyDoctors(Long patientId){
 
+        Patient patient = getPatientEntity(patientId);
+        checkOwnership(patient);
+
         return appointmentRepository
                 .findDistinctDoctorsByPatientId(patientId)
                 .stream()
@@ -90,6 +98,9 @@ public class PatientServiceImpl implements PatientService {
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getMyAppointments(Long patientId){
 
+        Patient patient = getPatientEntity(patientId);
+        checkOwnership(patient);
+
         return appointmentRepository.findByPatientId(patientId)
                 .stream()
                 .map(AppointmentMapper::toResponse)
@@ -100,6 +111,9 @@ public class PatientServiceImpl implements PatientService {
     @Override
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getMyAppointmentHistory(Long patientId){
+
+        Patient patient = getPatientEntity(patientId);
+        checkOwnership(patient);
 
         return appointmentRepository
                 .findByPatientIdAndStatus(patientId, AppointmentStatus.COMPLETED)
@@ -112,6 +126,9 @@ public class PatientServiceImpl implements PatientService {
     @Override
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getMyUpcomingAppointments(Long patientId){
+
+        Patient patient = getPatientEntity(patientId);
+        checkOwnership(patient);
 
         return appointmentRepository
                 .findByPatientIdAndStatus(patientId, AppointmentStatus.SCHEDULED)
@@ -131,6 +148,9 @@ public class PatientServiceImpl implements PatientService {
             throw new BusinessException("Not your appointment");
         }
 
+        Patient patient = getPatientEntity(patientId);
+        checkOwnership(patient);
+
         boolean hasPayments = paymentRepository.existsByAppointmentId(appointmentId);
 
         if (hasPayments){
@@ -142,10 +162,34 @@ public class PatientServiceImpl implements PatientService {
         log.info("Patient {} cancelled appointment {}",patientId, appointmentId);
     }
 
+    // HELPERS
+
     private Patient getPatientEntity(Long patientId) {
 
         return patientRepository.findById(patientId)
                 .orElseThrow(() ->
                         new NotFoundException("Patient not found"));
+    }
+
+    private Authentication getAuthentication() {
+        return SecurityContextHolder.getContext().getAuthentication();
+    }
+
+    private String getCurrentUsername() {
+        return getAuthentication().getName();
+    }
+
+    private boolean isAdmin() {
+        return getAuthentication().getAuthorities()
+                .contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+    }
+
+    private void checkOwnership(Patient patient) {
+
+        if (!isAdmin() &&
+                !patient.getUser().getUsername().equals(getCurrentUsername())) {
+
+            throw new AccessDeniedException("Access denied");
+        }
     }
 }

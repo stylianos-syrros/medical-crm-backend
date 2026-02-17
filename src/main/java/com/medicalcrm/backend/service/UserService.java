@@ -17,8 +17,6 @@ public interface UserService {
 
     UserResponse updateUser(Long userId, UpdateUserRequest request);
 
-    User getByUsername(String username);
-
     List<UserResponse> getAllUsers();
 
     void enableUser(Long userId);

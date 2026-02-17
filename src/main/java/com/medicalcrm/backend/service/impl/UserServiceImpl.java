@@ -20,6 +20,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.List;
 
@@ -59,6 +63,7 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public UserResponse getById(Long id){
         User user = getUserEntity(id);
+        checkOwnership(user);
 
         return UserMapper.toResponse(user);
     }
@@ -68,20 +73,13 @@ public class UserServiceImpl implements UserService {
     public UserResponse updateUser(Long userId, UpdateUserRequest request) {
 
         User user = getUserEntity(userId);
+        checkOwnership(user);
 
         UserMapper.updateEntity(user, request);
 
         log.info("User {} updated", userId);
 
         return UserMapper.toResponse(user);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public User getByUsername(String username){
-        return userRepository.findByUsername(username)
-                .orElseThrow(()->
-                        new NotFoundException("User not found"));
     }
 
     @Override
@@ -119,6 +117,7 @@ public class UserServiceImpl implements UserService {
                                String newPassword){
 
         User user = getUserEntity(userId);
+        checkOwnership(user);
 
         if (!passwordEncoder.matches(oldPassword, user.getPassword())){
             throw new BusinessException("Wrong old password");
@@ -151,11 +150,34 @@ public class UserServiceImpl implements UserService {
         log.warn("User {} deleted", userId);
     }
 
+    // HELPERS
+
     private User getUserEntity(Long userId) {
 
         return userRepository.findById(userId)
                 .orElseThrow(() ->
                         new NotFoundException("User not found"));
     }
+
+    private Authentication getAuthentication() {
+        return SecurityContextHolder.getContext().getAuthentication();
+    }
+
+    private String getCurrentUsername() {
+        return getAuthentication().getName();
+    }
+
+    private boolean isAdmin() {
+        return getAuthentication().getAuthorities()
+                .contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+    }
+
+    private void checkOwnership(User user) {
+
+        if (!isAdmin() && !user.getUsername().equals(getCurrentUsername())) {
+            throw new AccessDeniedException("Access denied");
+        }
+    }
+
 
 }
