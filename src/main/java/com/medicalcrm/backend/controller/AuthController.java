@@ -2,11 +2,11 @@ package com.medicalcrm.backend.controller;
 
 import com.medicalcrm.backend.dto.request.LoginRequest;
 import com.medicalcrm.backend.dto.response.LoginResponse;
+import com.medicalcrm.backend.model.Role;
 import com.medicalcrm.backend.security.JwtService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.*;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 
@@ -31,14 +31,17 @@ public class AuthController {
 
         String username = authentication.getName();
 
-        String role = authentication.getAuthorities()
-                .stream()
-                .findFirst()
-                .map(GrantedAuthority::getAuthority)
-                .orElseThrow();
+        String roleStr = authentication.getAuthorities()
+                .iterator().next()
+                .getAuthority()
+                .replace("ROLE_", "");
 
+        Role role = Role.valueOf(roleStr);
 
-        String token = jwtService.generateToken(username,role);
+        String token = jwtService.generateToken(
+                request.getUsername(),
+                role
+        );
 
         return ResponseEntity.ok(new LoginResponse(token));
     }

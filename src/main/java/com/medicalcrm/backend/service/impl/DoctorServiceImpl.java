@@ -136,7 +136,11 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     private Authentication getAuthentication() {
-        return SecurityContextHolder.getContext().getAuthentication();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new BusinessException("No authentication context available");
+        }
+        return auth;
     }
 
     private String getCurrentUsername() {

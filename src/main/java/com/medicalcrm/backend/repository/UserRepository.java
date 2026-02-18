@@ -1,5 +1,6 @@
 package com.medicalcrm.backend.repository;
 
+import com.medicalcrm.backend.model.Role;
 import com.medicalcrm.backend.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -14,5 +15,8 @@ public interface UserRepository extends JpaRepository<User, Long>{
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);
+
+    long countByRole(Role role);
+
 }
 
