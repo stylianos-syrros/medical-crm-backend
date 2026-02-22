@@ -188,9 +188,6 @@ class AppointmentServiceTest {
 
         mockAuthentication("doctor1", Role.DOCTOR);
 
-        UpdateAppointmentNotesRequest request =
-                new UpdateAppointmentNotesRequest();
-
         when(appointmentRepository.findById(10L))
                 .thenReturn(Optional.of(appointment));
 
