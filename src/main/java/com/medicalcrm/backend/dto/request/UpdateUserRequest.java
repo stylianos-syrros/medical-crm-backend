@@ -16,9 +16,9 @@ public class UpdateUserRequest {
     @NotBlank(message = "Email is required")
     private String email;
 
-    @NotNull(message = "Role is required")
+    /*@NotNull(message = "Role is required")
     private Role role;
 
-    private boolean enabled;
+    private boolean enabled;*/
 }
 

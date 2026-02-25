@@ -24,7 +24,7 @@ public class UserMapper {
         User user = new User();
 
         user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword()); // encoding γίνεται στο service
+        user.setPassword(request.getPassword()); 
         user.setEmail(request.getEmail());
         user.setRole(request.getRole());
         return user;
@@ -34,8 +34,8 @@ public class UserMapper {
 
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        user.setRole(request.getRole());
-        user.setEnabled(request.isEnabled());
+        //user.setRole(request.getRole());
+        //user.setEnabled(request.isEnabled());
     }
 
 

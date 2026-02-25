@@ -51,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 var userDetails = userDetailsService.loadUserByUsername(username);
                 log.info("UserDetails loaded: {}", userDetails);
 
-                if (jwtService.isTokenValid(token, username)) {
+                if (userDetails.isEnabled() && jwtService.isTokenValid(token, username)) {
                     var authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
@@ -60,7 +60,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                     log.info("Authentication set in SecurityContext");
                 } else {
-                    log.warn("Invalid token for user: {}", username);
+                    log.warn("Invalid token or disabled user: {}", username);
                 }
             }
         } catch (Exception e) {

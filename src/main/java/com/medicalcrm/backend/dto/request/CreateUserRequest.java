@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import com.medicalcrm.backend.model.Role;
+import jakarta.validation.constraints.NotNull;
+
 
 @Data
 public class CreateUserRequest {
@@ -19,6 +21,6 @@ public class CreateUserRequest {
     @NotBlank(message = "Password is required")
     private String password;
 
-    @NotBlank(message = "Role is required")
+    @NotNull(message = "Role is required")
     private Role role;
 }
