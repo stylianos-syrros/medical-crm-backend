@@ -11,19 +11,19 @@ import java.util.List;
 
 public interface DoctorService {
 
-    DoctorResponse createDoctor(CreateDoctorRequest request);
+    DoctorResponse createMyProfile(CreateDoctorRequest request);
 
-    DoctorResponse getProfile(Long doctorId);
+    DoctorResponse getMyProfile();
 
-    DoctorResponse updateProfile(Long doctorId, UpdateDoctorRequest request);
+    DoctorResponse updateMyProfile(UpdateDoctorRequest request);
 
-    List<PatientResponse> getMyPatients(Long doctorId);
+    List<PatientResponse> getMyPatients();
 
-    List<AppointmentResponse> getMyAppointments(Long doctorId);
+    List<AppointmentResponse> getMyAppointments();
 
-    List<AppointmentResponse> getMyAppointmentHistory(Long doctorId);
+    List<AppointmentResponse> getMyAppointmentHistory();
 
-    List<AppointmentResponse> getMyUpcomingAppointments(Long doctorId);
+    List<AppointmentResponse> getMyUpcomingAppointments();
 
 
 

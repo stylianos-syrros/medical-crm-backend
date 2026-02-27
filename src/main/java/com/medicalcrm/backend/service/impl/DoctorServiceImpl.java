@@ -38,11 +38,16 @@ public class DoctorServiceImpl implements DoctorService {
     private final UserRepository userRepository;
 
     @Override
-    public DoctorResponse createDoctor(CreateDoctorRequest request){
+    public DoctorResponse createMyProfile(CreateDoctorRequest request){
+        String username = getCurrentUsername();
 
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new NotFoundException("User not found"));
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new NotFoundException("User not found"));
 
+        doctorRepository.findByUserId(user.getId()).ifPresent(d -> {
+            throw new BusinessException("Doctor profile already exists");
+        });
+        
         Doctor doctor = DoctorMapper.toEntity(request, user);
 
         Doctor saved = doctorRepository.save(doctor);
@@ -53,24 +58,27 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     @Override
-    public DoctorResponse getProfile(Long doctorId){
+    public DoctorResponse getMyProfile(){
 
-        Doctor doctor = getDoctorEntity(doctorId);
-        checkOwnership(doctor);
+        String username = getCurrentUsername();
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        Doctor doctor = doctorRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new NotFoundException("Doctor profile not found"));
 
         return DoctorMapper.toResponse(doctor);
     }
 
     @Override
-    public DoctorResponse updateProfile(Long doctorId,
-                                        UpdateDoctorRequest request) {
+    public DoctorResponse updateMyProfile(UpdateDoctorRequest request) {
 
-        Doctor doctor = getDoctorEntity(doctorId);
-        checkOwnership(doctor);
+        Doctor doctor = getCurrentDoctorEntity();
 
         DoctorMapper.updateEntity(doctor, request);
 
-        log.info("Doctor {} updated profile", doctorId);
+        log.info("Doctor {} updated own profile", doctor.getId());
 
         return DoctorMapper.toResponse(doctor);
     }
@@ -78,10 +86,9 @@ public class DoctorServiceImpl implements DoctorService {
     // PATIENT && APPOINTMENT
     @Override
     @Transactional(readOnly = true)
-    public List<PatientResponse> getMyPatients(Long doctorId){
+    public List<PatientResponse> getMyPatients(){
 
-        Doctor doctor = getDoctorEntity(doctorId);
-        checkOwnership(doctor);
+        Long doctorId = getCurrentDoctorEntity().getId();
 
         return appointmentRepository.findDistinctPatientsByDoctorId(doctorId)
                 .stream()
@@ -91,35 +98,34 @@ public class DoctorServiceImpl implements DoctorService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyAppointments(Long doctorId){
+    public List<AppointmentResponse> getMyAppointments(){
 
-        Doctor doctor = getDoctorEntity(doctorId);
-        checkOwnership(doctor);
+        Long doctorId = getCurrentDoctorEntity().getId();
 
         return appointmentRepository.findByDoctorId(doctorId)
                 .stream()
                 .map(AppointmentMapper::toResponse)
-                .toList();    }
+                .toList();    
+    }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyAppointmentHistory(Long doctorId){
+    public List<AppointmentResponse> getMyAppointmentHistory(){
 
-        Doctor doctor = getDoctorEntity(doctorId);
-        checkOwnership(doctor);
+        Long doctorId = getCurrentDoctorEntity().getId();
 
         return appointmentRepository
                 .findByDoctorIdAndStatus(doctorId, AppointmentStatus.COMPLETED)
                 .stream()
                 .map(AppointmentMapper::toResponse)
-                .toList();    }
+                .toList();    
+    }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyUpcomingAppointments(Long doctorId) {
+    public List<AppointmentResponse> getMyUpcomingAppointments() {
 
-        Doctor doctor = getDoctorEntity(doctorId);
-        checkOwnership(doctor);
+        Long doctorId = getCurrentDoctorEntity().getId();
 
         return appointmentRepository
                 .findByDoctorIdAndStatus(doctorId, AppointmentStatus.SCHEDULED)
@@ -130,9 +136,19 @@ public class DoctorServiceImpl implements DoctorService {
 
     // HELPERS
 
-    private Doctor getDoctorEntity(Long doctorId) {
+    /*private Doctor getDoctorEntity(Long doctorId) {
         return doctorRepository.findById(doctorId)
                 .orElseThrow(() -> new NotFoundException("Doctor not found"));
+    }*/
+
+    private Doctor getCurrentDoctorEntity() {
+        String username = getCurrentUsername();
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        return doctorRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new NotFoundException("Doctor profile not found"));
     }
 
     private Authentication getAuthentication() {
@@ -147,7 +163,7 @@ public class DoctorServiceImpl implements DoctorService {
         return getAuthentication().getName();
     }
 
-    private boolean isAdmin() {
+    /*private boolean isAdmin() {
         return getAuthentication().getAuthorities()
                 .contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
     }
@@ -159,6 +175,6 @@ public class DoctorServiceImpl implements DoctorService {
 
             throw new AccessDeniedException("Access denied");
         }
-    }
+    }*/
 
 }

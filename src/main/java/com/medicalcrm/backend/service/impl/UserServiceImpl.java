@@ -119,6 +119,10 @@ public class UserServiceImpl implements UserService {
         User user = getUserEntity(userId);
         checkOwnership(user);
 
+        if (oldPassword.equals(newPassword)) {
+            throw new BusinessException("New password must be different from old password");
+        }
+
         if (!passwordEncoder.matches(oldPassword, user.getPassword())){
             throw new BusinessException("Wrong old password");
         }

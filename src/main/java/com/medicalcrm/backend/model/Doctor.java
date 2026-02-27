@@ -2,6 +2,7 @@ package com.medicalcrm.backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import com.medicalcrm.backend.model.DoctorSpecialty;
 
 @Entity
 @Table(name = "doctors")
@@ -23,10 +24,11 @@ public class Doctor {
     @Column(nullable = false)
     private String lastName;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String specialty;
+    private DoctorSpecialty specialty;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String phone;
 
     @OneToOne

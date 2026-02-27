@@ -3,15 +3,13 @@ package com.medicalcrm.backend.controller;
 import com.medicalcrm.backend.dto.request.CreateDoctorRequest;
 import com.medicalcrm.backend.dto.request.UpdateAppointmentNotesRequest;
 import com.medicalcrm.backend.dto.request.UpdateDoctorRequest;
+import com.medicalcrm.backend.dto.response.AppointmentResponse;
 import com.medicalcrm.backend.dto.response.DoctorResponse;
 import com.medicalcrm.backend.dto.response.PatientResponse;
-import com.medicalcrm.backend.dto.response.AppointmentResponse;
 import com.medicalcrm.backend.service.AppointmentService;
 import com.medicalcrm.backend.service.DoctorService;
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,67 +23,65 @@ public class DoctorController {
     private final DoctorService doctorService;
     private final AppointmentService appointmentService;
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping
-    public DoctorResponse createDoctor(
-            @Valid @RequestBody CreateDoctorRequest request) {
-
-        return doctorService.createDoctor(request);
+    @PreAuthorize("hasRole('DOCTOR')")
+    @PostMapping("/me")
+    public DoctorResponse createMyProfile(@Valid @RequestBody CreateDoctorRequest request) {
+        return doctorService.createMyProfile(request);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/{doctorId}")
-    public DoctorResponse getProfile(@PathVariable Long doctorId){
-
-        return doctorService.getProfile(doctorId);
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/me")
+    public DoctorResponse getMyProfile() {
+        return doctorService.getMyProfile();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @PutMapping("/{doctorId}")
-    public DoctorResponse updateProfile(
-            @PathVariable Long doctorId,
-            @Valid @RequestBody UpdateDoctorRequest request){
+    @PreAuthorize("hasRole('DOCTOR')")
+    @PutMapping("/me")
+    public DoctorResponse updateMyProfile(
+            @Valid @RequestBody UpdateDoctorRequest request) {
 
-        return  doctorService.updateProfile(doctorId, request);
+        return doctorService.updateMyProfile(request);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/{doctorId}/patients")
-    public List<PatientResponse> getMyPatients(@PathVariable Long doctorId){
-
-        return doctorService.getMyPatients(doctorId);
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/me/patients")
+    public List<PatientResponse> getMyPatients() {
+        return doctorService.getMyPatients();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/{doctorId}/appointments")
-    public List<AppointmentResponse> getMyAppointments(@PathVariable Long doctorId){
-
-        return doctorService.getMyAppointments(doctorId);
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/me/appointments")
+    public List<AppointmentResponse> getMyAppointments() {
+        return doctorService.getMyAppointments();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/{doctorId}/appointments/history")
-    public List<AppointmentResponse> getMyAppointmentHistory(@PathVariable Long doctorId){
-
-        return doctorService.getMyAppointmentHistory(doctorId);
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/me/appointments/history")
+    public List<AppointmentResponse> getMyAppointmentHistory() {
+        return doctorService.getMyAppointmentHistory();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/{doctorId}/appointments/upcoming")
-    public List<AppointmentResponse> getMyUpcomingAppointments(@PathVariable Long doctorId){
-
-        return doctorService.getMyUpcomingAppointments(doctorId);
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/me/appointments/upcoming")
+    public List<AppointmentResponse> getMyUpcomingAppointments() {
+        return doctorService.getMyUpcomingAppointments();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @PutMapping("/{doctorId}/appointments/{appointmentId}/notes")
-    public void updateNotes(
-            @PathVariable Long doctorId,
+    @PreAuthorize("hasRole('DOCTOR')")
+    @PutMapping("/me/appointments/{appointmentId}/notes")
+    public void updateMyAppointmentNotes(
             @PathVariable Long appointmentId,
-            @Valid @RequestBody UpdateAppointmentNotesRequest request){
+            @Valid @RequestBody UpdateAppointmentNotesRequest request) {
 
+        Long doctorId = doctorService.getMyProfile().getId();
         appointmentService.updateNotesByDoctor(doctorId, appointmentId, request);
     }
 
+    @PreAuthorize("hasRole('DOCTOR')")
+    @PutMapping("/me/appointments/{appointmentId}/complete")
+    public void completeMyAppointment(@PathVariable Long appointmentId) {
+        Long doctorId = doctorService.getMyProfile().getId();
+        appointmentService.completeAppointmentByDoctor(doctorId, appointmentId);
+    }
 
 }

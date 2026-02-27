@@ -18,13 +18,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,112 +64,104 @@ class DoctorServiceTest {
 
     @Test
     void createDoctor_success(){
+        mockAuthentication("doctor1", Role.DOCTOR);
 
         CreateDoctorRequest request = new CreateDoctorRequest();
-        request.setUserId(1L);
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findByUsername("doctor1")).thenReturn(Optional.of(user));
+        when(doctorRepository.findByUserId(1L)).thenReturn(Optional.empty());
         when(doctorRepository.save(any())).thenReturn(doctor);
 
-        DoctorResponse response = doctorService.createDoctor(request);
+        DoctorResponse response = doctorService.createMyProfile(request);
 
         assertNotNull(response);
         verify(doctorRepository).save(any());
     }
 
     @Test
-    void createDoctor_userNotFound() {
+    void createMyProfile_userNotFound() {
+        mockAuthentication("doctor1", Role.DOCTOR);
 
         CreateDoctorRequest request = new CreateDoctorRequest();
-        request.setUserId(99L);
 
-        when(userRepository.findById(anyLong()))
-                .thenReturn(Optional.empty());
+        when(userRepository.findByUsername("doctor1")).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class,
-                () -> doctorService.createDoctor(request));
+                () -> doctorService.createMyProfile(request));
     }
 
 
     @Test
-    void getProfile_success_owner() {
+    void getMyProfile_success() {
 
         mockAuthentication("doctor1", Role.DOCTOR);
 
-        when(doctorRepository.findById(1L))
+        when(userRepository.findByUsername("doctor1"))
+            .thenReturn(Optional.of(user));
+
+        when(doctorRepository.findByUserId(1L))
                 .thenReturn(Optional.of(doctor));
 
-        DoctorResponse response = doctorService.getProfile(1L);
+        DoctorResponse response = doctorService.getMyProfile();
 
         assertNotNull(response);
     }
 
     @Test
-    void getProfile_doctorNotFound() {
+    void getMyProfile_doctorNotFound() {
 
         mockAuthentication("doctor1", Role.DOCTOR);
 
-        when(doctorRepository.findById(1L))
+        when(userRepository.findByUsername("doctor1"))
+            .thenReturn(Optional.of(user));
+
+        when(doctorRepository.findByUserId(1L))
                 .thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class,
-                () -> doctorService.getProfile(1L));
+                () -> doctorService.getMyProfile());
     }
 
     @Test
-    void getProfile_accessDenied() {
-
-        mockAuthentication("otherUser", Role.DOCTOR);
-
-        when(doctorRepository.findById(1L))
-                .thenReturn(Optional.of(doctor));
-
-        assertThrows(AccessDeniedException.class,
-                () -> doctorService.getProfile(1L));
-    }
-
-    @Test
-    void updateProfile_success() {
+    void getMyProfile_userNotFound() {
 
         mockAuthentication("doctor1", Role.DOCTOR);
 
+        when(userRepository.findByUsername("doctor1"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class,
+                () -> doctorService.getMyProfile());
+    }
+
+
+    @Test
+    void updateMyProfile_success() {
+                
+        mockAuthentication("doctor1", Role.DOCTOR);
+  
         UpdateDoctorRequest request = new UpdateDoctorRequest();
 
-        when(doctorRepository.findById(1L))
+        when(userRepository.findByUsername("doctor1"))
+                .thenReturn(Optional.of(user));
+        when(doctorRepository.findByUserId(1L))
                 .thenReturn(Optional.of(doctor));
 
-        DoctorResponse response =
-                doctorService.updateProfile(1L, request);
+        DoctorResponse response = doctorService.updateMyProfile(request);
 
         assertNotNull(response);
     }
 
-    @Test
-    void updateProfile_accessDenied() {
-
-        mockAuthentication("otherUser", Role.DOCTOR);
-
-        UpdateDoctorRequest request = new UpdateDoctorRequest();
-
-        when(doctorRepository.findById(1L))
-                .thenReturn(Optional.of(doctor));
-
-        assertThrows(AccessDeniedException.class,
-                () -> doctorService.updateProfile(1L, request));
-    }
 
     @Test
     void getMyPatients_success() {
 
         mockAuthentication("doctor1", Role.DOCTOR);
 
-        when(doctorRepository.findById(1L))
-                .thenReturn(Optional.of(doctor));
+        when(userRepository.findByUsername("doctor1")).thenReturn(Optional.of(user));
 
-        when(appointmentRepository.findDistinctPatientsByDoctorId(1L))
-                .thenReturn(java.util.List.of());
+        when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
 
-        var list = doctorService.getMyPatients(1L);
+        var list = doctorService.getMyPatients();
 
         assertNotNull(list);
     }
@@ -179,13 +171,13 @@ class DoctorServiceTest {
 
         mockAuthentication("doctor1", Role.DOCTOR);
 
-        when(doctorRepository.findById(1L))
-                .thenReturn(Optional.of(doctor));
+        when(userRepository.findByUsername("doctor1")).thenReturn(Optional.of(user));
+        
+        when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
+        
+        when(appointmentRepository.findByDoctorId(1L)).thenReturn(java.util.List.of());
 
-        when(appointmentRepository.findByDoctorId(1L))
-                .thenReturn(java.util.List.of());
-
-        var list = doctorService.getMyAppointments(1L);
+        var list = doctorService.getMyAppointments();
 
         assertNotNull(list);
     }
@@ -195,14 +187,13 @@ class DoctorServiceTest {
 
         mockAuthentication("doctor1", Role.DOCTOR);
 
-        when(doctorRepository.findById(1L))
-                .thenReturn(Optional.of(doctor));
+        when(userRepository.findByUsername("doctor1")).thenReturn(Optional.of(user));
+        
+        when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
+        
+        when(appointmentRepository.findByDoctorIdAndStatus(any(), any())).thenReturn(java.util.List.of());
 
-        when(appointmentRepository
-                .findByDoctorIdAndStatus(any(), any()))
-                .thenReturn(java.util.List.of());
-
-        var list = doctorService.getMyAppointmentHistory(1L);
+        var list = doctorService.getMyAppointmentHistory();
 
         assertNotNull(list);
     }
@@ -212,14 +203,11 @@ class DoctorServiceTest {
 
         mockAuthentication("doctor1", Role.DOCTOR);
 
-        when(doctorRepository.findById(1L))
-                .thenReturn(Optional.of(doctor));
+        when(userRepository.findByUsername("doctor1")).thenReturn(Optional.of(user));
+        when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
+        when(appointmentRepository.findByDoctorIdAndStatus(any(), any())).thenReturn(java.util.List.of());
 
-        when(appointmentRepository
-                .findByDoctorIdAndStatus(any(), any()))
-                .thenReturn(java.util.List.of());
-
-        var list = doctorService.getMyUpcomingAppointments(1L);
+        var list = doctorService.getMyUpcomingAppointments();
 
         assertNotNull(list);
     }

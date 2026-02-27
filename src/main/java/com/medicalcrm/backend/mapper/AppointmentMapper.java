@@ -21,6 +21,8 @@ public class AppointmentMapper {
         response.setPatientId(appointment.getPatient().getId());
         response.setDoctorId(appointment.getDoctor().getId());
         response.setServiceId(appointment.getService().getId());
+        response.setPatientName(appointment.getPatient().getFirstName() + " " + appointment.getPatient().getLastName());
+        response.setServiceName(appointment.getService().getName());
 
         return response;
     }

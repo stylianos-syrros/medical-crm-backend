@@ -5,7 +5,5 @@ import lombok.Data;
 
 @Data
 public class UpdateAppointmentNotesRequest {
-
-    @NotBlank(message = "Notes cannot be empty")
     private String notes;
 }

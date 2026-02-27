@@ -29,8 +29,6 @@ public class AuthController {
                 )
         );
 
-        //String username = authentication.getName();
-
         String roleStr = authentication.getAuthorities()
                 .iterator().next()
                 .getAuthority()

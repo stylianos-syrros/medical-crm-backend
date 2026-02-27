@@ -22,5 +22,9 @@ public class AppointmentResponse {
     private Long patientId;
     private Long doctorId;
     private Long serviceId;
+
+    private String patientName;
+    private String serviceName;
+
 }
 
