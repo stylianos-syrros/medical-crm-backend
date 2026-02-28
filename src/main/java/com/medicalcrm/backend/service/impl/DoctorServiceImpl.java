@@ -50,6 +50,10 @@ public class DoctorServiceImpl implements DoctorService {
         
         Doctor doctor = DoctorMapper.toEntity(request, user);
 
+        if (doctorRepository.existsByPhone(request.getPhone())) {
+            throw new BusinessException("Phone number already in use");
+        }
+
         Doctor saved = doctorRepository.save(doctor);
 
         log.info("Doctor profile created for user {}", user.getId());
@@ -79,6 +83,10 @@ public class DoctorServiceImpl implements DoctorService {
         DoctorMapper.updateEntity(doctor, request);
 
         log.info("Doctor {} updated own profile", doctor.getId());
+
+        if (doctorRepository.existsByPhoneAndIdNot(request.getPhone(), doctor.getId())) {
+            throw new BusinessException("Phone number already in use");
+        }
 
         return DoctorMapper.toResponse(doctor);
     }

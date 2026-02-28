@@ -11,5 +11,10 @@ public interface PatientRepository extends JpaRepository<Patient, Long>{
     Optional<Patient> findByUserId(Long userId);
 
     List<Patient> findByLastName(String lastName);
+    
+    boolean existsByPhone(String phone);
+    
+    boolean existsByPhoneAndIdNot(String phone, Long id);
+
 }
 

@@ -22,68 +22,64 @@ public class PatientController {
 
     private final PatientService patientService;
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping
-    public PatientResponse createPatient(
+    @PreAuthorize("hasRole('PATIENT')")
+    @PostMapping("/me")
+    public PatientResponse createMyProfile(
             @Valid @RequestBody CreatePatientRequest request){
 
-        return patientService.createPatient(request);
+        return patientService.createMyProfile(request);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/{patientId}")
-    public PatientResponse getProfile(@PathVariable Long patientId){
+    @PreAuthorize("hasAnyRole('PATIENT')")
+    @GetMapping("/me")
+    public PatientResponse getMyProfile(){
 
-        return patientService.getProfile(patientId);
+        return patientService.getMyProfile();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @PutMapping("/{patientId}")
-    public PatientResponse updateProfile(
-            @PathVariable Long patientId,
+    @PreAuthorize("hasAnyRole('PATIENT')")
+    @PutMapping("/me")
+    public PatientResponse updateMyProfile(
             @Valid @RequestBody UpdatePatientRequest request){
 
-        return patientService.updateProfile(patientId, request);
+        return patientService.updateMyProfile(request);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/{patientId}/doctors")
-    public List<DoctorResponse> getMyDoctors(@PathVariable Long patientId){
+    @PreAuthorize("hasAnyRole('PATIENT')")
+    @GetMapping("/me/doctors")
+    public List<DoctorResponse> getMyDoctors(){
 
-        return patientService.getMyDoctors(patientId);
+        return patientService.getMyDoctors();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/{patientId}/appointments")
-    public List<AppointmentResponse> getMyAppointments(@PathVariable Long patientId){
+    @PreAuthorize("hasAnyRole('PATIENT')")
+    @GetMapping("/me/appointments")
+    public List<AppointmentResponse> getMyAppointments(){
 
-        return patientService.getMyAppointments(patientId);
+        return patientService.getMyAppointments();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/{patientId}/appointments/history")
-    public List<AppointmentResponse> getMyAppointmentHistory(
-            @PathVariable Long patientId) {
+    @PreAuthorize("hasAnyRole('PATIENT')")
+    @GetMapping("/me/appointments/history")
+    public List<AppointmentResponse> getMyAppointmentsHistory() {
 
-        return patientService.getMyAppointmentHistory(patientId);
+        return patientService.getMyAppointmentsHistory();
     }
 
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/{patientId}/appointments/upcoming")
-    public List<AppointmentResponse> getMyUpcomingAppointments(
-            @PathVariable Long patientId) {
+    @PreAuthorize("hasAnyRole('PATIENT')")
+    @GetMapping("/me/appointments/upcoming")
+    public List<AppointmentResponse> getMyUpcomingAppointments() {
 
-        return patientService.getMyUpcomingAppointments(patientId);
+        return patientService.getMyUpcomingAppointments();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @DeleteMapping("/{patientId}/appointments/{appointmentId}")
+    @PreAuthorize("hasAnyRole('PATIENT')")
+    @DeleteMapping("/me/appointments/{appointmentId}")
     public void cancelAppointment(
-            @PathVariable Long patientId,
             @PathVariable Long appointmentId){
 
-        patientService.cancelAppointment(patientId,appointmentId);
+        patientService.cancelAppointment(appointmentId);
     }
 
 }

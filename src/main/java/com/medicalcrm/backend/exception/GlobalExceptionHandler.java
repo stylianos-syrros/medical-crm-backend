@@ -6,6 +6,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -62,5 +63,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("Internal server error");
     }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<String> handleDataIntegrity(DataIntegrityViolationException ex) {
+        String msg = ex.getMostSpecificCause() != null
+                ? ex.getMostSpecificCause().getMessage()
+                : ex.getMessage();
+
+        if (msg != null) {
+            if (msg.contains("(phone)")) return ResponseEntity.status(HttpStatus.CONFLICT).body("Phone number already in use");
+            if (msg.contains("(username)")) return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already exists");
+            if (msg.contains("(email)")) return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
+        }
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body("Duplicate value already exists");
+    }
+
 
 }

@@ -11,20 +11,19 @@ import java.util.List;
 
 public interface PatientService {
 
-    PatientResponse createPatient(CreatePatientRequest request);
+    PatientResponse createMyProfile(CreatePatientRequest request);
 
-    PatientResponse getProfile(Long patientId);
+    PatientResponse getMyProfile();
 
-    PatientResponse updateProfile(Long patientId, UpdatePatientRequest request);
+    PatientResponse updateMyProfile(UpdatePatientRequest request);
 
-    List<DoctorResponse> getMyDoctors(Long patientId);
+    List<DoctorResponse> getMyDoctors();
 
-    List<AppointmentResponse> getMyAppointments(Long patientId);
+    List<AppointmentResponse> getMyAppointments();
 
-    List<AppointmentResponse> getMyAppointmentHistory(Long patientId);
+    List<AppointmentResponse> getMyAppointmentsHistory();
 
-    List<AppointmentResponse> getMyUpcomingAppointments(Long patientId);
+    List<AppointmentResponse> getMyUpcomingAppointments();
 
-    void cancelAppointment(Long patientId,
-                           Long appointmentId);
+    void cancelAppointment(Long appointmentId);
 }

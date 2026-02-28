@@ -8,7 +8,6 @@ import com.medicalcrm.backend.exception.BusinessException;
 import com.medicalcrm.backend.exception.NotFoundException;
 import com.medicalcrm.backend.mapper.AppointmentMapper;
 import com.medicalcrm.backend.model.*;
-import com.medicalcrm.backend.model.AppointmentStatus;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -263,6 +262,10 @@ public class AppointmentServiceImpl  implements AppointmentService{
 
         Doctor doctor = appointment.getDoctor();
         checkDoctorOwnership(doctor);
+
+        if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
+            throw new BusinessException("Notes can be updated only for scheduled appointments");
+        }
 
         AppointmentMapper.updateNotes(appointment, request);
 

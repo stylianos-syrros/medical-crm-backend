@@ -3,10 +3,7 @@ package com.medicalcrm.backend.service;
 import com.medicalcrm.backend.dto.request.CreateUserRequest;
 import com.medicalcrm.backend.dto.request.UpdateUserRequest;
 import com.medicalcrm.backend.dto.response.UserResponse;
-import com.medicalcrm.backend.model.User;
 import com.medicalcrm.backend.model.Role;
-
-import javax.swing.*;
 import java.util.List;
 
 public interface UserService {

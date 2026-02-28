@@ -5,6 +5,9 @@ import com.medicalcrm.backend.dto.request.UpdateUserRequest;
 import com.medicalcrm.backend.dto.response.UserResponse;
 import com.medicalcrm.backend.mapper.UserMapper;
 import com.medicalcrm.backend.service.UserService;
+import com.medicalcrm.backend.repository.DoctorRepository;
+import com.medicalcrm.backend.repository.PatientRepository;
+
 
 import com.medicalcrm.backend.exception.BusinessException;
 import com.medicalcrm.backend.exception.NotFoundException;
@@ -35,6 +38,9 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DoctorRepository doctorRepository;
+    private final PatientRepository patientRepository;
+
 
     @Override
     public UserResponse createUser(CreateUserRequest request){
@@ -74,6 +80,14 @@ public class UserServiceImpl implements UserService {
 
         User user = getUserEntity(userId);
         checkOwnership(user);
+
+        if (userRepository.existsByUsernameAndIdNot(request.getUsername(), userId)) {
+            throw new BusinessException("Username already exists");
+        }
+
+        if (userRepository.existsByEmailAndIdNot(request.getEmail(), userId)) {
+            throw new BusinessException("Email already exists");
+        }
 
         UserMapper.updateEntity(user, request);
 
@@ -133,8 +147,23 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void changeRole(Long userId, Role role){
+    public void changeRole(Long userId, Role role) {
         User user = getUserEntity(userId);
+
+        if (user.getRole() == Role.ADMIN || role == Role.ADMIN) {
+            throw new BusinessException("Admin role cannot be changed");
+        }
+
+        boolean hasDoctorProfile = doctorRepository.findByUserId(userId).isPresent();
+        boolean hasPatientProfile = patientRepository.findByUserId(userId).isPresent();
+
+        if (hasDoctorProfile && role != Role.DOCTOR) {
+            throw new BusinessException("Cannot change role: user already has a DOCTOR profile");
+        }
+
+        if (hasPatientProfile && role != Role.PATIENT) {
+            throw new BusinessException("Cannot change role: user already has a PATIENT profile");
+        }
 
         user.setRole(role);
 

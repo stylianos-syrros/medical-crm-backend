@@ -8,12 +8,10 @@ import com.medicalcrm.backend.dto.response.PatientResponse;
 import com.medicalcrm.backend.mapper.AppointmentMapper;
 import com.medicalcrm.backend.mapper.DoctorMapper;
 import com.medicalcrm.backend.mapper.PatientMapper;
-import com.medicalcrm.backend.model.Patient;
 import com.medicalcrm.backend.service.PatientService;
 
 import com.medicalcrm.backend.exception.*;
 import com.medicalcrm.backend.model.*;
-import com.medicalcrm.backend.model.AppointmentStatus;
 import com.medicalcrm.backend.repository.*;
 
 import lombok.RequiredArgsConstructor;
@@ -40,39 +38,48 @@ public class PatientServiceImpl implements PatientService {
     private final UserRepository userRepository;
 
     @Override
-    public PatientResponse createPatient(CreatePatientRequest request) {
+    public PatientResponse createMyProfile(CreatePatientRequest request) {
+        String username = getCurrentUsername();
 
-        User user = userRepository.findById(request.getUserId())
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        Patient patient = PatientMapper.toEntity(request, user);
+        patientRepository.findByUserId(user.getId()).ifPresent(p -> {
+            throw new BusinessException("Patient profile already exists");
+        });
 
+        if (patientRepository.existsByPhone(request.getPhone())) {
+            throw new BusinessException("Phone number already in use");
+        }
+
+        Patient patient = PatientMapper.toEntity(request, user);
         Patient saved = patientRepository.save(patient);
 
         log.info("Patient profile created for user {}", user.getId());
 
         return PatientMapper.toResponse(saved);
     }
+
     @Override
     @Transactional(readOnly = true)
-    public PatientResponse getProfile(Long patientId) {
+    public PatientResponse getMyProfile() {
 
-        Patient patient = getPatientEntity(patientId);
-        checkOwnership(patient);
-
+        Patient patient = getCurrentPatientEntity();
         return PatientMapper.toResponse(patient);
     }
 
     @Override
-    public PatientResponse updateProfile(Long patientId,
-                                         UpdatePatientRequest request) {
+    public PatientResponse updateMyProfile(UpdatePatientRequest request) {
 
-        Patient patient = getPatientEntity(patientId);
-        checkOwnership(patient);
+        Patient patient = getCurrentPatientEntity();
+        
+        if (patientRepository.existsByPhoneAndIdNot(request.getPhone(), patient.getId())) {
+            throw new BusinessException("Phone number already in use");
+        }
 
         PatientMapper.updateEntity(patient, request);
 
-        log.info("Patient {} updated profile", patientId);
+        log.info("Patient {} updated own profile", patient.getId());
 
         return PatientMapper.toResponse(patient);
     }
@@ -81,10 +88,9 @@ public class PatientServiceImpl implements PatientService {
     // DOCTOR && APPOINTMENT
     @Override
     @Transactional(readOnly = true)
-    public List<DoctorResponse> getMyDoctors(Long patientId){
+    public List<DoctorResponse> getMyDoctors(){
 
-        Patient patient = getPatientEntity(patientId);
-        checkOwnership(patient);
+        Long patientId = getCurrentPatientEntity().getId();
 
         return appointmentRepository
                 .findDistinctDoctorsByPatientId(patientId)
@@ -96,10 +102,9 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyAppointments(Long patientId){
+    public List<AppointmentResponse> getMyAppointments(){
 
-        Patient patient = getPatientEntity(patientId);
-        checkOwnership(patient);
+        Long patientId = getCurrentPatientEntity().getId();
 
         return appointmentRepository.findByPatientId(patientId)
                 .stream()
@@ -110,10 +115,9 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyAppointmentHistory(Long patientId){
+    public List<AppointmentResponse> getMyAppointmentsHistory(){
 
-        Patient patient = getPatientEntity(patientId);
-        checkOwnership(patient);
+        Long patientId = getCurrentPatientEntity().getId();
 
         return appointmentRepository
                 .findByPatientIdAndStatus(patientId, AppointmentStatus.COMPLETED)
@@ -125,10 +129,9 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyUpcomingAppointments(Long patientId){
+    public List<AppointmentResponse> getMyUpcomingAppointments(){
 
-        Patient patient = getPatientEntity(patientId);
-        checkOwnership(patient);
+        Long patientId = getCurrentPatientEntity().getId();
 
         return appointmentRepository
                 .findByPatientIdAndStatus(patientId, AppointmentStatus.SCHEDULED)
@@ -139,7 +142,10 @@ public class PatientServiceImpl implements PatientService {
 
 
     @Override
-    public void cancelAppointment(Long patientId, Long appointmentId){
+    public void cancelAppointment(Long appointmentId){
+            Patient patient = getCurrentPatientEntity();
+            Long patientId = patient.getId();
+
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(()->
                         new NotFoundException("Appointment not found"));
@@ -148,11 +154,7 @@ public class PatientServiceImpl implements PatientService {
             throw new BusinessException("Not your appointment");
         }
 
-        Patient patient = getPatientEntity(patientId);
-        checkOwnership(patient);
-
         boolean hasPayments = paymentRepository.existsByAppointmentId(appointmentId);
-
         if (hasPayments){
             throw new BusinessException("Cannot cancel paid appointment");
         }
@@ -164,12 +166,16 @@ public class PatientServiceImpl implements PatientService {
 
     // HELPERS
 
-    private Patient getPatientEntity(Long patientId) {
+    private Patient getCurrentPatientEntity() {
+        String username = getCurrentUsername();
 
-        return patientRepository.findById(patientId)
-                .orElseThrow(() ->
-                        new NotFoundException("Patient not found"));
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        return patientRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new NotFoundException("Patient profile not found"));
     }
+
 
     private Authentication getAuthentication() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -181,19 +187,5 @@ public class PatientServiceImpl implements PatientService {
 
     private String getCurrentUsername() {
         return getAuthentication().getName();
-    }
-
-    private boolean isAdmin() {
-        return getAuthentication().getAuthorities()
-                .contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
-    }
-
-    private void checkOwnership(Patient patient) {
-
-        if (!isAdmin() &&
-                !patient.getUser().getUsername().equals(getCurrentUsername())) {
-
-            throw new AccessDeniedException("Access denied");
-        }
     }
 }
