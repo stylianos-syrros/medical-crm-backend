@@ -9,6 +9,7 @@ import com.medicalcrm.backend.model.Role;
 import com.medicalcrm.backend.model.User;
 import com.medicalcrm.backend.repository.AppointmentRepository;
 import com.medicalcrm.backend.repository.DoctorRepository;
+import com.medicalcrm.backend.repository.PatientRepository;
 import com.medicalcrm.backend.repository.UserRepository;
 import com.medicalcrm.backend.service.impl.DoctorServiceImpl;
 import org.junit.jupiter.api.AfterEach;
@@ -32,6 +33,9 @@ class DoctorServiceTest {
 
     @Mock
     private DoctorRepository doctorRepository;
+    
+    @Mock
+    private PatientRepository patientRepository;
 
     @Mock
     private AppointmentRepository appointmentRepository;
@@ -55,6 +59,8 @@ class DoctorServiceTest {
         doctor = new Doctor();
         doctor.setId(1L);
         doctor.setUser(user);
+        doctor.setPhone("123");
+
     }
 
     @AfterEach
@@ -67,6 +73,10 @@ class DoctorServiceTest {
         mockAuthentication("doctor1", Role.DOCTOR);
 
         CreateDoctorRequest request = new CreateDoctorRequest();
+        request.setPhone("555");
+
+        when(doctorRepository.existsByPhoneAndIdNot("555", -1L)).thenReturn(false);
+        when(patientRepository.findByPhone("555")).thenReturn(Optional.empty());
         when(userRepository.findByUsername("doctor1")).thenReturn(Optional.of(user));
         when(doctorRepository.findByUserId(1L)).thenReturn(Optional.empty());
         when(doctorRepository.save(any())).thenReturn(doctor);
@@ -140,6 +150,7 @@ class DoctorServiceTest {
         mockAuthentication("doctor1", Role.DOCTOR);
   
         UpdateDoctorRequest request = new UpdateDoctorRequest();
+        request.setPhone("123");
 
         when(userRepository.findByUsername("doctor1"))
                 .thenReturn(Optional.of(user));
@@ -162,52 +173,6 @@ class DoctorServiceTest {
         when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
 
         var list = doctorService.getMyPatients();
-
-        assertNotNull(list);
-    }
-
-    @Test
-    void getMyAppointments_success() {
-
-        mockAuthentication("doctor1", Role.DOCTOR);
-
-        when(userRepository.findByUsername("doctor1")).thenReturn(Optional.of(user));
-        
-        when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
-        
-        when(appointmentRepository.findByDoctorId(1L)).thenReturn(java.util.List.of());
-
-        var list = doctorService.getMyAppointments();
-
-        assertNotNull(list);
-    }
-
-    @Test
-    void getMyAppointmentHistory_success() {
-
-        mockAuthentication("doctor1", Role.DOCTOR);
-
-        when(userRepository.findByUsername("doctor1")).thenReturn(Optional.of(user));
-        
-        when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
-        
-        when(appointmentRepository.findByDoctorIdAndStatus(any(), any())).thenReturn(java.util.List.of());
-
-        var list = doctorService.getMyAppointmentHistory();
-
-        assertNotNull(list);
-    }
-
-    @Test
-    void getMyUpcomingAppointments_success() {
-
-        mockAuthentication("doctor1", Role.DOCTOR);
-
-        when(userRepository.findByUsername("doctor1")).thenReturn(Optional.of(user));
-        when(doctorRepository.findByUserId(1L)).thenReturn(Optional.of(doctor));
-        when(appointmentRepository.findByDoctorIdAndStatus(any(), any())).thenReturn(java.util.List.of());
-
-        var list = doctorService.getMyUpcomingAppointments();
 
         assertNotNull(list);
     }

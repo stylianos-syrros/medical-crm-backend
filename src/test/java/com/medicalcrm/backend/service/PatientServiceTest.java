@@ -24,6 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,6 +32,9 @@ class PatientServiceTest {
 
     @Mock
     private PatientRepository patientRepository;
+
+    @Mock
+    private DoctorRepository doctorRepository;
 
     @Mock
     private AppointmentRepository appointmentRepository;
@@ -59,6 +63,7 @@ class PatientServiceTest {
         patient = new Patient();
         patient.setId(1L);
         patient.setUser(user);
+        patient.setPhone("123");
 
         appointment = new Appointment();
         appointment.setId(10L);
@@ -82,9 +87,10 @@ class PatientServiceTest {
                 .thenReturn(Optional.of(user));
         when(patientRepository.findByUserId(1L))
                 .thenReturn(Optional.empty());
-        when(patientRepository.existsByPhone("123"))
+        when(patientRepository.existsByPhoneAndIdNot("123", -1L))
                 .thenReturn(false);
-
+        when(doctorRepository.findByPhone("123"))
+                .thenReturn(Optional.empty());
         when(patientRepository.save(any()))
                 .thenReturn(patient);
 
@@ -153,31 +159,31 @@ class PatientServiceTest {
     }
 
     @Test
-    void updateMyProfile_success() {
-
+        void updateMyProfile_success() {
         mockAuthentication("patient1", Role.PATIENT);
+
         UpdatePatientRequest request = new UpdatePatientRequest();
         request.setPhone("123");
+        patient.setPhone("123"); 
 
         when(userRepository.findByUsername("patient1"))
                 .thenReturn(Optional.of(user));
         when(patientRepository.findByUserId(1L))
                 .thenReturn(Optional.of(patient));
-        when(patientRepository.existsByPhoneAndIdNot("123", 1L))
-                .thenReturn(false);
 
-        PatientResponse response =
-                patientService.updateMyProfile(request);
+        PatientResponse response = patientService.updateMyProfile(request);
 
         assertNotNull(response);
-    }
+        }
+
 
     @Test
-    void updateMyProfile_phoneAlreadyUsed() {
+        void updateMyProfile_phoneAlreadyUsed() {
         mockAuthentication("patient1", Role.PATIENT);
 
         UpdatePatientRequest request = new UpdatePatientRequest();
-        request.setPhone("123");
+        request.setPhone("123"); 
+        patient.setPhone("999"); 
 
         when(userRepository.findByUsername("patient1"))
                 .thenReturn(Optional.of(user));
@@ -188,7 +194,8 @@ class PatientServiceTest {
 
         assertThrows(BusinessException.class,
                 () -> patientService.updateMyProfile(request));
-    }
+        }
+
 
     @Test
     void getMyDoctors_success() {
@@ -206,117 +213,6 @@ class PatientServiceTest {
         var list = patientService.getMyDoctors();
 
         assertNotNull(list);
-    }
-
-    @Test
-    void getMyAppointments_success() {
-
-        mockAuthentication("patient1", Role.PATIENT);
-
-        when(userRepository.findByUsername("patient1"))
-                .thenReturn(Optional.of(user));
-        when(patientRepository.findByUserId(1L))
-                .thenReturn(Optional.of(patient));
-
-        when(appointmentRepository.findByPatientId(1L))
-                .thenReturn(java.util.List.of());
-
-        var list = patientService.getMyAppointments();
-
-        assertNotNull(list);
-    }
-
-    @Test
-    void getMyAppointmentsHistory_success() {
-        mockAuthentication("patient1", Role.PATIENT);
-
-        when(userRepository.findByUsername("patient1"))
-                .thenReturn(Optional.of(user));
-        when(patientRepository.findByUserId(1L))
-                .thenReturn(Optional.of(patient));
-        when(appointmentRepository.findByPatientIdAndStatus(1L, AppointmentStatus.COMPLETED))
-                .thenReturn(java.util.List.of());
-
-        var list = patientService.getMyAppointmentsHistory();
-
-        assertNotNull(list);
-    }
-
-    @Test
-    void getMyUpcomingAppointments_success() {
-        mockAuthentication("patient1", Role.PATIENT);
-
-        when(userRepository.findByUsername("patient1"))
-                .thenReturn(Optional.of(user));
-        when(patientRepository.findByUserId(1L))
-                .thenReturn(Optional.of(patient));
-        when(appointmentRepository.findByPatientIdAndStatus(1L, AppointmentStatus.SCHEDULED))
-                .thenReturn(java.util.List.of());
-
-        var list = patientService.getMyUpcomingAppointments();
-
-        assertNotNull(list);
-    }
-
-    @Test
-    void cancelAppointment_success() {
-
-        mockAuthentication("patient1", Role.PATIENT);
-        when(userRepository.findByUsername("patient1"))
-                .thenReturn(Optional.of(user));
-        when(patientRepository.findByUserId(1L))
-                .thenReturn(Optional.of(patient));
-
-        when(appointmentRepository.findById(10L))
-                .thenReturn(Optional.of(appointment));
-
-        when(paymentRepository.existsByAppointmentId(10L))
-                .thenReturn(false);
-
-        patientService.cancelAppointment(10L);
-
-        assertEquals(AppointmentStatus.CANCELLED,
-                appointment.getStatus());
-    }
-
-    @Test
-    void cancelAppointment_notOwner() {
-
-        mockAuthentication("patient1", Role.PATIENT);
-        when(userRepository.findByUsername("patient1"))
-                .thenReturn(Optional.of(user));
-        when(patientRepository.findByUserId(1L))
-                .thenReturn(Optional.of(patient));
-
-        Patient otherPatient = new Patient();
-        otherPatient.setId(2L);
-
-        appointment.setPatient(otherPatient);
-
-        when(appointmentRepository.findById(10L))
-                .thenReturn(Optional.of(appointment));
-
-        assertThrows(BusinessException.class,
-                () -> patientService.cancelAppointment(10L));
-    }
-
-    @Test
-    void cancelAppointment_hasPayments() {
-
-        mockAuthentication("patient1", Role.PATIENT);
-        when(userRepository.findByUsername("patient1"))
-                .thenReturn(Optional.of(user));
-        when(patientRepository.findByUserId(1L))
-                .thenReturn(Optional.of(patient));
-
-        when(appointmentRepository.findById(10L))
-                .thenReturn(Optional.of(appointment));
-
-        when(paymentRepository.existsByAppointmentId(10L))
-                .thenReturn(true);
-
-        assertThrows(BusinessException.class,
-                () -> patientService.cancelAppointment(10L));
     }
 
     private void mockAuthentication(String username, Role role) {

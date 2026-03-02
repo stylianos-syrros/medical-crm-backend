@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
         try {
             String line = "{\"sessionId\":\"fb0aac\",\"location\":\"GlobalExceptionHandler.java:handleOther\",\"message\":\"handleOther\",\"data\":{\"exceptionClass\":\"" + ex.getClass().getName() + "\",\"message\":\"" + (ex.getMessage() != null ? ex.getMessage().replace("\"", "'") : "null") + "\"},\"timestamp\":" + System.currentTimeMillis() + ",\"hypothesisId\":\"A\"}\n";
             Files.write(Paths.get("/Users/ntk/Downloads/backend/.cursor/debug-fb0aac.log"), line.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-        } catch (Throwable t) { /* ignore */ }
+        } catch (Throwable t) { }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("Internal server error");
     }
@@ -70,13 +70,20 @@ public class GlobalExceptionHandler {
                 ? ex.getMostSpecificCause().getMessage()
                 : ex.getMessage();
 
+        System.out.println("DataIntegrityViolation full message: " + msg);
+
         if (msg != null) {
             if (msg.contains("(phone)")) return ResponseEntity.status(HttpStatus.CONFLICT).body("Phone number already in use");
             if (msg.contains("(username)")) return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already exists");
             if (msg.contains("(email)")) return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
         }
 
-        return ResponseEntity.status(HttpStatus.CONFLICT).body("Duplicate value already exists");
+        if (msg != null && msg.contains("services") && msg.contains("(name)")) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Service name already exists");
+        }
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(msg);
+
     }
 
 

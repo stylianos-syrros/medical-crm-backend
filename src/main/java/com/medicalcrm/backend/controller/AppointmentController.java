@@ -21,102 +21,96 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @PostMapping("/patient/{patientId}")
+    // PATIENT self endpoints
+
+    @PreAuthorize("hasRole('PATIENT')")
+    @PostMapping("/patient/me")
     public AppointmentResponse bookAppointment(
-            @PathVariable Long patientId,
             @Valid @RequestBody CreateAppointmentRequest request) {
 
-        return appointmentService.bookAppointment(patientId, request);
+        return appointmentService.bookAppointment(request);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @DeleteMapping("/patient/{patientId}/{appointmentId}")
-    public void cancelAppointment(
-            @PathVariable Long patientId,
-            @PathVariable Long appointmentId){
+    @PreAuthorize("hasRole('PATIENT')")
+    @DeleteMapping("/patient/me/{appointmentId}/cancel")
+    public void cancelAppointmentByPatient(@PathVariable Long appointmentId){
 
-        appointmentService.cancelAppointment(patientId, appointmentId);
+        appointmentService.cancelAppointmentByPatient(appointmentId);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @PutMapping("/patient/{patientId}/{appointmentId}/reschedule")
+    @PreAuthorize("hasRole('PATIENT')")
+    @PutMapping("/patient/me/{appointmentId}/reschedule")
     public void rescheduleAppointment(
-            @PathVariable Long patientId,
             @PathVariable Long appointmentId,
             @Valid @RequestBody UpdateAppointmentScheduleRequest request){
 
-        appointmentService.rescheduleAppointment(patientId, appointmentId, request);
+        appointmentService.rescheduleAppointment(appointmentId, request);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/patient/{patientId}/upcoming")
-    public List<AppointmentResponse> getUpcomingAppointmentsForPatient(
-            @PathVariable Long patientId){
+    @PreAuthorize("hasRole('PATIENT')")
+    @GetMapping("/patient/me/upcoming")
+    public List<AppointmentResponse> getUpcomingAppointmentsForPatient(){
 
-        return appointmentService.getUpcomingAppointmentsForPatient(patientId);
+        return appointmentService.getUpcomingAppointmentsForPatient();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/patient/{patientId}/history")
-    public List<AppointmentResponse> getAppointmentHistoryForPatient(
-            @PathVariable Long patientId){
+    @PreAuthorize("hasRole('PATIENT')")
+    @GetMapping("/patient/me/history")
+    public List<AppointmentResponse> getAppointmentsHistoryForPatient(){
 
-        return appointmentService.getAppointmentHistoryForPatient(patientId);
+        return appointmentService.getAppointmentsHistoryForPatient();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/doctor/{doctorId}/upcoming")
-    public List<AppointmentResponse> getUpcomingAppointmentsForDoctor(
-            @PathVariable Long doctorId){
+    // DOCTOR self endpoints
 
-        return appointmentService.getUpcomingAppointmentsForDoctor(doctorId);
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/doctor/me/upcoming")
+    public List<AppointmentResponse> getUpcomingAppointmentsForDoctor(){
+
+        return appointmentService.getUpcomingAppointmentsForDoctor();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/doctor/{doctorId}/history")
-    public List<AppointmentResponse> getAppointmentHistoryForDoctor(
-            @PathVariable Long doctorId){
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/doctor/me/history")
+    public List<AppointmentResponse> getAppointmentHistoryForDoctor(){
 
-        return appointmentService.getAppointmentHistoryForDoctor(doctorId);
+        return appointmentService.getAppointmentsHistoryForDoctor();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/doctor/{doctorId}/status")
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/doctor/me/status")
     public List<AppointmentResponse> getAppointmentsForDoctorByStatus(
-            @PathVariable Long doctorId,
             @RequestParam AppointmentStatus status){
 
-        return appointmentService.getAppointmentsForDoctorByStatus(doctorId, status);
+        return appointmentService.getAppointmentsForDoctorByStatus(status);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @DeleteMapping("/doctor/{doctorId}/{appointmentId}/cancel")
+    @PreAuthorize("hasRole('DOCTOR')")
+    @DeleteMapping("/doctor/me/{appointmentId}/cancel")
     public void cancelAppointmentByDoctor(
-            @PathVariable Long doctorId,
             @PathVariable Long appointmentId) {
 
-        appointmentService.cancelAppointmentByDoctor(doctorId, appointmentId);
+        appointmentService.cancelAppointmentByDoctor(appointmentId);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @PutMapping("/doctor/{doctorId}/{appointmentId}/complete")
+    @PreAuthorize("hasRole('DOCTOR')")
+    @PutMapping("/doctor/me/{appointmentId}/complete")
     public void completeAppointmentByDoctor(
-            @PathVariable Long doctorId,
             @PathVariable Long appointmentId) {
 
-        appointmentService.completeAppointmentByDoctor(doctorId, appointmentId);
+        appointmentService.completeAppointmentByDoctor(appointmentId);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @PutMapping("/doctor/{doctorId}/{appointmentId}/notes")
+    @PreAuthorize("hasRole('DOCTOR')")
+    @PutMapping("/doctor/me/{appointmentId}/notes")
     public void updateNotesByDoctor(
-            @PathVariable Long doctorId,
             @PathVariable Long appointmentId,
             @Valid @RequestBody UpdateAppointmentNotesRequest request) {
 
-        appointmentService.updateNotesByDoctor(doctorId, appointmentId, request);
+        appointmentService.updateNotesByDoctor(appointmentId, request);
     }
+
+    // ADMIN endpoints
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping

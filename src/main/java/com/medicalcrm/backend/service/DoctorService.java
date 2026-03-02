@@ -19,12 +19,5 @@ public interface DoctorService {
 
     List<PatientResponse> getMyPatients();
 
-    List<AppointmentResponse> getMyAppointments();
-
-    List<AppointmentResponse> getMyAppointmentHistory();
-
-    List<AppointmentResponse> getMyUpcomingAppointments();
-
-
 
 }

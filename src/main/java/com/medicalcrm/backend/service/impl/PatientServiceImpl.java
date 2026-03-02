@@ -34,8 +34,8 @@ public class PatientServiceImpl implements PatientService {
 
     private final PatientRepository patientRepository;
     private final AppointmentRepository appointmentRepository;
-    private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
+    private final DoctorRepository doctorRepository;
 
     @Override
     public PatientResponse createMyProfile(CreatePatientRequest request) {
@@ -48,11 +48,15 @@ public class PatientServiceImpl implements PatientService {
             throw new BusinessException("Patient profile already exists");
         });
 
-        if (patientRepository.existsByPhone(request.getPhone())) {
+        if (phoneUsedByAnotherUserForPatient(request.getPhone(), -1L, user.getId())) {
             throw new BusinessException("Phone number already in use");
         }
 
         Patient patient = PatientMapper.toEntity(request, user);
+
+        log.info("Create patient profile attempt: userId={}, phone={}, phoneExists={}",
+        user.getId(), request.getPhone(), patientRepository.existsByPhone(request.getPhone()));
+
         Patient saved = patientRepository.save(patient);
 
         log.info("Patient profile created for user {}", user.getId());
@@ -73,7 +77,11 @@ public class PatientServiceImpl implements PatientService {
 
         Patient patient = getCurrentPatientEntity();
         
-        if (patientRepository.existsByPhoneAndIdNot(request.getPhone(), patient.getId())) {
+        String newPhone = request.getPhone();
+        String currentPhone = patient.getPhone();
+
+        if (!newPhone.equals(currentPhone) &&
+            phoneUsedByAnotherUserForPatient(newPhone, patient.getId(), patient.getUser().getId())) {
             throw new BusinessException("Phone number already in use");
         }
 
@@ -85,7 +93,7 @@ public class PatientServiceImpl implements PatientService {
     }
 
 
-    // DOCTOR && APPOINTMENT
+    // DOCTOR 
     @Override
     @Transactional(readOnly = true)
     public List<DoctorResponse> getMyDoctors(){
@@ -97,71 +105,6 @@ public class PatientServiceImpl implements PatientService {
                 .stream()
                 .map(DoctorMapper::toResponse)
                 .toList();
-    }
-
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyAppointments(){
-
-        Long patientId = getCurrentPatientEntity().getId();
-
-        return appointmentRepository.findByPatientId(patientId)
-                .stream()
-                .map(AppointmentMapper::toResponse)
-                .toList();
-    }
-
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyAppointmentsHistory(){
-
-        Long patientId = getCurrentPatientEntity().getId();
-
-        return appointmentRepository
-                .findByPatientIdAndStatus(patientId, AppointmentStatus.COMPLETED)
-                .stream()
-                .map(AppointmentMapper::toResponse)
-                .toList();
-    }
-
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyUpcomingAppointments(){
-
-        Long patientId = getCurrentPatientEntity().getId();
-
-        return appointmentRepository
-                .findByPatientIdAndStatus(patientId, AppointmentStatus.SCHEDULED)
-                .stream()
-                .map(AppointmentMapper::toResponse)
-                .toList();
-    }
-
-
-    @Override
-    public void cancelAppointment(Long appointmentId){
-            Patient patient = getCurrentPatientEntity();
-            Long patientId = patient.getId();
-
-        Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(()->
-                        new NotFoundException("Appointment not found"));
-
-        if (!appointment.getPatient().getId().equals(patientId)){
-            throw new BusinessException("Not your appointment");
-        }
-
-        boolean hasPayments = paymentRepository.existsByAppointmentId(appointmentId);
-        if (hasPayments){
-            throw new BusinessException("Cannot cancel paid appointment");
-        }
-
-        appointment.setStatus(AppointmentStatus.CANCELLED);
-
-        log.info("Patient {} cancelled appointment {}",patientId, appointmentId);
     }
 
     // HELPERS
@@ -188,4 +131,15 @@ public class PatientServiceImpl implements PatientService {
     private String getCurrentUsername() {
         return getAuthentication().getName();
     }
+
+    private boolean phoneUsedByAnotherUserForPatient(String phone, Long currentPatientId, Long currentUserId) {
+        boolean usedByOtherPatient = patientRepository.existsByPhoneAndIdNot(phone, currentPatientId);
+
+        boolean usedByOtherDoctor = doctorRepository.findByPhone(phone)
+                .map(d -> !d.getUser().getId().equals(currentUserId))
+                .orElse(false);
+
+        return usedByOtherPatient || usedByOtherDoctor;
+    }
+
 }

@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,6 +45,10 @@ class AppointmentServiceTest {
 
     @Mock
     private PaymentRepository paymentRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
 
     @InjectMocks
     private AppointmentServiceImpl appointmentService;
@@ -113,7 +118,10 @@ class AppointmentServiceTest {
         request.setDoctorId(2L);
         request.setServiceId(3L);
 
-        when(patientRepository.findById(1L))
+        when(userRepository.findByUsername("patient1"))
+                .thenReturn(Optional.of(patient.getUser()));
+        
+        when(patientRepository.findByUserId(patient.getUser().getId()))
                 .thenReturn(Optional.of(patient));
 
         when(doctorRepository.findById(2L))
@@ -125,8 +133,9 @@ class AppointmentServiceTest {
         when(appointmentRepository.save(any()))
                 .thenReturn(appointment);
 
+
         AppointmentResponse response =
-                appointmentService.bookAppointment(1L, request);
+                appointmentService.bookAppointment(request);
 
         assertNotNull(response);
     }
@@ -136,13 +145,19 @@ class AppointmentServiceTest {
 
         mockAuthentication("patient1", Role.PATIENT);
 
+        when(userRepository.findByUsername("patient1"))
+                .thenReturn(Optional.of(patient.getUser()));
+        
+        when(patientRepository.findByUserId(patient.getUser().getId()))
+                .thenReturn(Optional.of(patient));
+
         when(appointmentRepository.findById(10L))
                 .thenReturn(Optional.of(appointment));
 
         when(paymentRepository.existsByAppointmentId(10L))
                 .thenReturn(false);
 
-        appointmentService.cancelAppointment(1L, 10L);
+        appointmentService.cancelAppointmentByPatient(10L);
 
         assertEquals(AppointmentStatus.CANCELLED,
                 appointment.getStatus());
@@ -153,6 +168,12 @@ class AppointmentServiceTest {
 
         mockAuthentication("patient1", Role.PATIENT);
 
+        when(userRepository.findByUsername("patient1"))
+                .thenReturn(Optional.of(patient.getUser()));
+        
+        when(patientRepository.findByUserId(patient.getUser().getId()))
+                .thenReturn(Optional.of(patient));
+
         when(appointmentRepository.findById(10L))
                 .thenReturn(Optional.of(appointment));
 
@@ -160,13 +181,19 @@ class AppointmentServiceTest {
                 .thenReturn(true);
 
         assertThrows(BusinessException.class,
-                () -> appointmentService.cancelAppointment(1L, 10L));
+                () -> appointmentService.cancelAppointmentByPatient(10L));
     }
 
     @Test
     void rescheduleAppointment_success() {
 
         mockAuthentication("patient1", Role.PATIENT);
+
+        when(userRepository.findByUsername("patient1"))
+                .thenReturn(Optional.of(patient.getUser()));
+        
+        when(patientRepository.findByUserId(patient.getUser().getId()))
+                .thenReturn(Optional.of(patient));
 
         UpdateAppointmentScheduleRequest request =
                 new UpdateAppointmentScheduleRequest();
@@ -175,7 +202,7 @@ class AppointmentServiceTest {
                 .thenReturn(Optional.of(appointment));
 
         appointmentService
-                .rescheduleAppointment(1L, 10L, request);
+                .rescheduleAppointment(10L, request);
 
         assertEquals(AppointmentStatus.SCHEDULED,
                 appointment.getStatus());
@@ -191,13 +218,16 @@ class AppointmentServiceTest {
         when(appointmentRepository.findById(10L))
                 .thenReturn(Optional.of(appointment));
 
-        when(doctorRepository.findById(2L))
+        when(userRepository.findByUsername("doctor1"))
+                .thenReturn(Optional.of(doctor.getUser()));
+
+        when(doctorRepository.findByUserId(doctor.getUser().getId()))
                 .thenReturn(Optional.of(doctor));
 
         when(paymentRepository.sumAmountByAppointmentId(10L))
                 .thenReturn(BigDecimal.valueOf(100));
 
-        appointmentService.completeAppointmentByDoctor(2L, 10L);
+        appointmentService.completeAppointmentByDoctor(10L);
 
         assertEquals(AppointmentStatus.COMPLETED,
                 appointment.getStatus());
@@ -211,7 +241,10 @@ class AppointmentServiceTest {
         when(appointmentRepository.findById(10L))
                 .thenReturn(Optional.of(appointment));
 
-        when(doctorRepository.findById(2L))
+        when(userRepository.findByUsername("doctor1"))
+                .thenReturn(Optional.of(doctor.getUser()));
+
+        when(doctorRepository.findByUserId(doctor.getUser().getId()))
                 .thenReturn(Optional.of(doctor));
 
         when(paymentRepository.sumAmountByAppointmentId(10L))
@@ -219,7 +252,7 @@ class AppointmentServiceTest {
 
         assertThrows(BusinessException.class,
                 () -> appointmentService
-                        .completeAppointmentByDoctor(2L, 10L));
+                        .completeAppointmentByDoctor( 10L));
     }
 
     @Test
@@ -233,10 +266,13 @@ class AppointmentServiceTest {
         when(appointmentRepository.findById(10L))
                 .thenReturn(Optional.of(appointment));
 
-        lenient().when(doctorRepository.findById(2L))
+        when(userRepository.findByUsername("doctor1"))
+                .thenReturn(Optional.of(doctor.getUser()));
+
+        when(doctorRepository.findByUserId(doctor.getUser().getId()))
                 .thenReturn(Optional.of(doctor));
 
-        appointmentService.updateNotesByDoctor(doctor.getId(), appointment.getId(), request);
+        appointmentService.updateNotesByDoctor(appointment.getId(), request);
 
         assertEquals("Updated notes by doctor",
                 appointment.getNotes());

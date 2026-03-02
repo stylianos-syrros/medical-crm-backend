@@ -29,7 +29,4 @@ public class CreatePatientRequest {
             message = "Phone must be 10 digits"
     )
     private String phone;
-
-    @NotNull(message = "User id is required")
-    private Long userId;
 }

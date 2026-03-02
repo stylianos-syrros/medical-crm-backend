@@ -34,8 +34,10 @@ import java.util.List;
 public class DoctorServiceImpl implements DoctorService {
 
     private final DoctorRepository doctorRepository;
-    private final  AppointmentRepository appointmentRepository;
+    private final AppointmentRepository appointmentRepository;
     private final UserRepository userRepository;
+    private final PatientRepository patientRepository;
+
 
     @Override
     public DoctorResponse createMyProfile(CreateDoctorRequest request){
@@ -50,9 +52,11 @@ public class DoctorServiceImpl implements DoctorService {
         
         Doctor doctor = DoctorMapper.toEntity(request, user);
 
-        if (doctorRepository.existsByPhone(request.getPhone())) {
+        if (phoneUsedByAnotherUserForDoctor(request.getPhone(), -1L, user.getId())) {
             throw new BusinessException("Phone number already in use");
         }
+
+
 
         Doctor saved = doctorRepository.save(doctor);
 
@@ -84,14 +88,18 @@ public class DoctorServiceImpl implements DoctorService {
 
         log.info("Doctor {} updated own profile", doctor.getId());
 
-        if (doctorRepository.existsByPhoneAndIdNot(request.getPhone(), doctor.getId())) {
+        String newPhone = request.getPhone();
+        String currentPhone = doctor.getPhone();
+
+        if (!newPhone.equals(currentPhone) &&
+            phoneUsedByAnotherUserForDoctor(newPhone, doctor.getId(), doctor.getUser().getId())) {
             throw new BusinessException("Phone number already in use");
         }
 
         return DoctorMapper.toResponse(doctor);
     }
 
-    // PATIENT && APPOINTMENT
+    // PATIENT 
     @Override
     @Transactional(readOnly = true)
     public List<PatientResponse> getMyPatients(){
@@ -104,6 +112,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .toList();
     }
 
+    /*
     @Override
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getMyAppointments(){
@@ -140,7 +149,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .stream()
                 .map(AppointmentMapper::toResponse)
                 .toList();
-    }
+    }*/
 
     // HELPERS
 
@@ -171,18 +180,14 @@ public class DoctorServiceImpl implements DoctorService {
         return getAuthentication().getName();
     }
 
-    /*private boolean isAdmin() {
-        return getAuthentication().getAuthorities()
-                .contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+    private boolean phoneUsedByAnotherUserForDoctor(String phone, Long currentDoctorId, Long currentUserId) {
+        boolean usedByOtherDoctor = doctorRepository.existsByPhoneAndIdNot(phone, currentDoctorId);
+
+        boolean usedByOtherPatient = patientRepository.findByPhone(phone)
+                .map(p -> !p.getUser().getId().equals(currentUserId))
+                .orElse(false);
+
+        return usedByOtherDoctor || usedByOtherPatient;
     }
-
-    private void checkOwnership(Doctor doctor) {
-
-        if (!isAdmin() &&
-                !doctor.getUser().getUsername().equals(getCurrentUsername())) {
-
-            throw new AccessDeniedException("Access denied");
-        }
-    }*/
 
 }

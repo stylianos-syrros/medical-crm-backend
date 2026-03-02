@@ -14,31 +14,29 @@ import java.util.List;
 public interface AppointmentService {
 
     // Patient
-    AppointmentResponse bookAppointment(Long patientId, CreateAppointmentRequest request);
+    AppointmentResponse bookAppointment(CreateAppointmentRequest request);
 
-    void cancelAppointment(Long patientId, Long appointmentId);
+    void cancelAppointmentByPatient(Long appointmentId);
 
-    void rescheduleAppointment(Long patientId,
-                               Long appointmentId,
+    void rescheduleAppointment(Long appointmentId,
                                UpdateAppointmentScheduleRequest request);
 
-    List<AppointmentResponse> getUpcomingAppointmentsForPatient(Long patientId);
+    List<AppointmentResponse> getUpcomingAppointmentsForPatient();
 
-    List<AppointmentResponse> getAppointmentHistoryForPatient(Long patientId);
+    List<AppointmentResponse> getAppointmentsHistoryForPatient();
 
     // Doctor
-    List<AppointmentResponse> getUpcomingAppointmentsForDoctor(Long doctorId);
+    List<AppointmentResponse> getUpcomingAppointmentsForDoctor();
 
-    List<AppointmentResponse> getAppointmentHistoryForDoctor(Long doctorId);
+    List<AppointmentResponse> getAppointmentsHistoryForDoctor();
 
-    List<AppointmentResponse> getAppointmentsForDoctorByStatus(Long doctorId, AppointmentStatus status);
+    List<AppointmentResponse> getAppointmentsForDoctorByStatus(AppointmentStatus status);
 
-    void cancelAppointmentByDoctor(Long doctorId, Long appointmentId);
+    void cancelAppointmentByDoctor(Long appointmentId);
 
-    void completeAppointmentByDoctor(Long doctorId, Long appointmentId);
+    void completeAppointmentByDoctor(Long appointmentId);
 
-    void updateNotesByDoctor(Long doctorId,
-                                  Long appointmentId,
+    void updateNotesByDoctor(Long appointmentId,
                                   UpdateAppointmentNotesRequest request);
 
     // Admin

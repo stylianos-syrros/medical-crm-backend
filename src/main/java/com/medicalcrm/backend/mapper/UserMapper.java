@@ -16,7 +16,9 @@ public class UserMapper {
                 user.getEmail(),
                 user.getRole(),
                 user.getEnabled(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                false,
+                false
         );
     }
 
@@ -34,8 +36,7 @@ public class UserMapper {
 
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        //user.setRole(request.getRole());
-        //user.setEnabled(request.isEnabled());
+
     }
 
 

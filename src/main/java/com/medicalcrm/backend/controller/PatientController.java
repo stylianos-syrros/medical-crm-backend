@@ -30,14 +30,14 @@ public class PatientController {
         return patientService.createMyProfile(request);
     }
 
-    @PreAuthorize("hasAnyRole('PATIENT')")
+    @PreAuthorize("hasRole('PATIENT')")
     @GetMapping("/me")
     public PatientResponse getMyProfile(){
 
         return patientService.getMyProfile();
     }
 
-    @PreAuthorize("hasAnyRole('PATIENT')")
+    @PreAuthorize("hasRole('PATIENT')")
     @PutMapping("/me")
     public PatientResponse updateMyProfile(
             @Valid @RequestBody UpdatePatientRequest request){
@@ -45,41 +45,10 @@ public class PatientController {
         return patientService.updateMyProfile(request);
     }
 
-    @PreAuthorize("hasAnyRole('PATIENT')")
+    @PreAuthorize("hasRole('PATIENT')")
     @GetMapping("/me/doctors")
     public List<DoctorResponse> getMyDoctors(){
 
         return patientService.getMyDoctors();
     }
-
-    @PreAuthorize("hasAnyRole('PATIENT')")
-    @GetMapping("/me/appointments")
-    public List<AppointmentResponse> getMyAppointments(){
-
-        return patientService.getMyAppointments();
-    }
-
-    @PreAuthorize("hasAnyRole('PATIENT')")
-    @GetMapping("/me/appointments/history")
-    public List<AppointmentResponse> getMyAppointmentsHistory() {
-
-        return patientService.getMyAppointmentsHistory();
-    }
-
-
-    @PreAuthorize("hasAnyRole('PATIENT')")
-    @GetMapping("/me/appointments/upcoming")
-    public List<AppointmentResponse> getMyUpcomingAppointments() {
-
-        return patientService.getMyUpcomingAppointments();
-    }
-
-    @PreAuthorize("hasAnyRole('PATIENT')")
-    @DeleteMapping("/me/appointments/{appointmentId}")
-    public void cancelAppointment(
-            @PathVariable Long appointmentId){
-
-        patientService.cancelAppointment(appointmentId);
-    }
-
 }

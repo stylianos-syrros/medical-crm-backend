@@ -19,11 +19,11 @@ public interface PatientService {
 
     List<DoctorResponse> getMyDoctors();
 
-    List<AppointmentResponse> getMyAppointments();
+    /*List<AppointmentResponse> getMyAppointments();
 
-    List<AppointmentResponse> getMyAppointmentsHistory();
+    List<AppointmentResponse> getMyAppointmentsHistory(); 
 
     List<AppointmentResponse> getMyUpcomingAppointments();
 
-    void cancelAppointment(Long appointmentId);
+    void cancelAppointment(Long appointmentId);*/
 }

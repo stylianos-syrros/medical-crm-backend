@@ -1,7 +1,6 @@
 package com.medicalcrm.backend.controller;
 
 import com.medicalcrm.backend.dto.request.CreateDoctorRequest;
-import com.medicalcrm.backend.dto.request.UpdateAppointmentNotesRequest;
 import com.medicalcrm.backend.dto.request.UpdateDoctorRequest;
 import com.medicalcrm.backend.dto.response.AppointmentResponse;
 import com.medicalcrm.backend.dto.response.DoctorResponse;
@@ -21,7 +20,6 @@ import java.util.List;
 public class DoctorController {
 
     private final DoctorService doctorService;
-    private final AppointmentService appointmentService;
 
     @PreAuthorize("hasRole('DOCTOR')")
     @PostMapping("/me")
@@ -47,41 +45,6 @@ public class DoctorController {
     @GetMapping("/me/patients")
     public List<PatientResponse> getMyPatients() {
         return doctorService.getMyPatients();
-    }
-
-    @PreAuthorize("hasRole('DOCTOR')")
-    @GetMapping("/me/appointments")
-    public List<AppointmentResponse> getMyAppointments() {
-        return doctorService.getMyAppointments();
-    }
-
-    @PreAuthorize("hasRole('DOCTOR')")
-    @GetMapping("/me/appointments/history")
-    public List<AppointmentResponse> getMyAppointmentHistory() {
-        return doctorService.getMyAppointmentHistory();
-    }
-
-    @PreAuthorize("hasRole('DOCTOR')")
-    @GetMapping("/me/appointments/upcoming")
-    public List<AppointmentResponse> getMyUpcomingAppointments() {
-        return doctorService.getMyUpcomingAppointments();
-    }
-
-    @PreAuthorize("hasRole('DOCTOR')")
-    @PutMapping("/me/appointments/{appointmentId}/notes")
-    public void updateMyAppointmentNotes(
-            @PathVariable Long appointmentId,
-            @Valid @RequestBody UpdateAppointmentNotesRequest request) {
-
-        Long doctorId = doctorService.getMyProfile().getId();
-        appointmentService.updateNotesByDoctor(doctorId, appointmentId, request);
-    }
-
-    @PreAuthorize("hasRole('DOCTOR')")
-    @PutMapping("/me/appointments/{appointmentId}/complete")
-    public void completeMyAppointment(@PathVariable Long appointmentId) {
-        Long doctorId = doctorService.getMyProfile().getId();
-        appointmentService.completeAppointmentByDoctor(doctorId, appointmentId);
     }
 
 }

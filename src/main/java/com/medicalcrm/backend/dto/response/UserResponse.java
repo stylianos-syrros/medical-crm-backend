@@ -22,4 +22,8 @@ public class UserResponse {
     private boolean enabled;
 
     private LocalDateTime createdAt;
+
+    private boolean hasDoctorProfile;
+
+    private boolean hasPatientProfile;
 }

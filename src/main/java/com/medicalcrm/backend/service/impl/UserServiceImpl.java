@@ -101,7 +101,13 @@ public class UserServiceImpl implements UserService {
     public List<UserResponse> getAllUsers(){
         return userRepository.findAll()
                 .stream()
-                .map(UserMapper::toResponse)
+                .map(user -> {
+                    UserResponse response = UserMapper.toResponse(user);
+                    Long userId = user.getId();
+                    response.setHasDoctorProfile(doctorRepository.findByUserId(userId).isPresent());
+                    response.setHasPatientProfile(patientRepository.findByUserId(userId).isPresent());
+                    return response;
+                })
                 .toList();
     }
 
