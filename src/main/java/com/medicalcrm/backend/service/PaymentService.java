@@ -11,27 +11,24 @@ import java.util.List;
 public interface PaymentService {
 
     // DOCTOR
+    BigDecimal getTotalReceivedByDoctor();
+    BigDecimal getTotalPendingByDoctor();
+    BigDecimal getTotalExpectedByDoctor();
 
-    BigDecimal getTotalReceivedByDoctor(Long doctorId);
-    BigDecimal getTotalPendingByDoctor(Long doctorId);
-    BigDecimal getTotalExpectedByDoctor(Long doctorId);
-
-    List<AppointmentResponse> getPaidAppointmentsByDoctor(Long doctorId);
-    List<AppointmentResponse> getUnpaidAppointmentsByDoctor(Long doctorId);
+    List<AppointmentResponse> getPaidAppointmentsByDoctor();
+    List<AppointmentResponse> getUnpaidAppointmentsByDoctor();
 
     // PATIENT
+    PaymentResponse makePayment(CreatePaymentRequest request);
 
-    PaymentResponse makePayment(Long patientId, CreatePaymentRequest request);
+    List<AppointmentResponse> getPaidAppointmentsByPatient();
+    List<AppointmentResponse> getUnpaidAppointmentsByPatient();
 
-    List<AppointmentResponse> getPaidAppointmentsByPatient(Long patientId);
-    List<AppointmentResponse> getUnpaidAppointmentsByPatient(Long patientId);
-
-    BigDecimal getTotalPaidByPatient(Long patientId);
-    BigDecimal getTotalPendingByPatient(Long patientId);
-    BigDecimal getTotalExpectedByPatient(Long patientId);
+    BigDecimal getTotalPaidByPatient();
+    BigDecimal getTotalPendingByPatient();
+    BigDecimal getTotalExpectedByPatient();
 
     // ADMIN
-
     List<PaymentResponse> getAllPayments();
 
 }

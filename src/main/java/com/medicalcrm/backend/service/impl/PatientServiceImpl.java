@@ -92,8 +92,6 @@ public class PatientServiceImpl implements PatientService {
         return PatientMapper.toResponse(patient);
     }
 
-
-    // DOCTOR 
     @Override
     @Transactional(readOnly = true)
     public List<DoctorResponse> getMyDoctors(){
@@ -102,6 +100,16 @@ public class PatientServiceImpl implements PatientService {
 
         return appointmentRepository
                 .findDistinctDoctorsByPatientId(patientId)
+                .stream()
+                .map(DoctorMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DoctorResponse> getAllDoctorsForBooking() {
+
+        return doctorRepository.findAll()
                 .stream()
                 .map(DoctorMapper::toResponse)
                 .toList();

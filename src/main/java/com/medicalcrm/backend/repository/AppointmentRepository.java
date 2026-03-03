@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.time.LocalDate;
 
@@ -23,8 +25,46 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByStatus(AppointmentStatus status);
 
     List<Appointment> findByPatientIdAndStatus(Long patientId, AppointmentStatus status);
+    List<Appointment> findByPatientIdAndStatusIn(Long patientId, Collection<AppointmentStatus> statuses);
+
+    List<Appointment> findByPatientIdAndAppointmentDateAndStatus(
+            Long patientId,
+            LocalDate appointmentDate,
+            AppointmentStatus status);
 
     List<Appointment> findByDoctorIdAndStatus(Long doctorId, AppointmentStatus status);
+    List<Appointment> findByDoctorIdAndStatusIn(Long doctorId, Collection<AppointmentStatus> statuses);
+
+    List<Appointment> findByDoctorIdAndAppointmentDateAndStatus(
+            Long doctorId,
+            LocalDate appointmentDate,
+            AppointmentStatus status);
+
+    boolean existsByPatientIdAndAppointmentDateAndAppointmentTimeAndStatus(
+            Long patientId,
+            LocalDate appointmentDate,
+            LocalTime appointmentTime,
+            AppointmentStatus status);
+
+    boolean existsByDoctorIdAndAppointmentDateAndAppointmentTimeAndStatus(
+            Long doctorId,
+            LocalDate appointmentDate,
+            LocalTime appointmentTime,
+            AppointmentStatus status);
+
+    boolean existsByPatientIdAndAppointmentDateAndAppointmentTimeAndStatusAndIdNot(
+            Long patientId,
+            LocalDate appointmentDate,
+            LocalTime appointmentTime,
+            AppointmentStatus status,
+            Long id);
+
+    boolean existsByDoctorIdAndAppointmentDateAndAppointmentTimeAndStatusAndIdNot(
+            Long doctorId,
+            LocalDate appointmentDate,
+            LocalTime appointmentTime,
+            AppointmentStatus status,
+            Long id);
 
     @Query("SELECT COALESCE(SUM(a.service.price),0) FROM Appointment a WHERE a.doctor.id = :doctorId")
     BigDecimal sumAppointmentPricesToDoctor(@Param("doctorId") Long doctorId);

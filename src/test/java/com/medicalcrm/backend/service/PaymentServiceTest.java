@@ -6,24 +6,24 @@ import com.medicalcrm.backend.exception.BusinessException;
 import com.medicalcrm.backend.model.*;
 import com.medicalcrm.backend.repository.*;
 import com.medicalcrm.backend.service.impl.PaymentServiceImpl;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
@@ -41,19 +41,21 @@ class PaymentServiceTest {
     private AppointmentRepository appointmentRepository;
 
     @Mock
-    private MedicalServiceRepository medicalServiceRepository;
+    private UserRepository userRepository;
 
     @InjectMocks
     private PaymentServiceImpl paymentService;
 
+    private User patientUser;
     private Patient patient;
-    private Appointment appointment;
-    private MedicalService service;
     private Doctor doctor;
+    private MedicalService medicalService;
+    private Appointment appointment;
 
     @BeforeEach
     void setUp() {
-        User patientUser = new User();
+        patientUser = new User();
+        patientUser.setId(100L);
         patientUser.setUsername("patient1");
         patientUser.setRole(Role.PATIENT);
 
@@ -62,6 +64,7 @@ class PaymentServiceTest {
         patient.setUser(patientUser);
 
         User doctorUser = new User();
+        doctorUser.setId(200L);
         doctorUser.setUsername("doctor1");
         doctorUser.setRole(Role.DOCTOR);
 
@@ -69,38 +72,37 @@ class PaymentServiceTest {
         doctor.setId(2L);
         doctor.setUser(doctorUser);
 
-        service = new MedicalService();
-        service.setId(3L);
-        service.setPrice(BigDecimal.valueOf(100));
+        medicalService = new MedicalService();
+        medicalService.setId(3L);
+        medicalService.setPrice(BigDecimal.valueOf(100));
 
         appointment = new Appointment();
         appointment.setId(10L);
         appointment.setPatient(patient);
-        appointment.setDoctor(doctor);  // Σύνδεση doctor με appointment
-        appointment.setService(service);
+        appointment.setDoctor(doctor);
+        appointment.setService(medicalService);
         appointment.setStatus(AppointmentStatus.SCHEDULED);
 
         mockAuthentication("patient1", Role.PATIENT);
 
-        lenient().when(patientRepository.findById(1L))  // lenient mock
+        lenient().when(userRepository.findByUsername("patient1"))
+                .thenReturn(Optional.of(patientUser));
+
+        lenient().when(patientRepository.findByUserId(100L))
                 .thenReturn(Optional.of(patient));
 
-        lenient().when(doctorRepository.findById(2L))  // lenient mock
-                .thenReturn(Optional.of(doctor));
-
-        lenient().when(paymentRepository.sumAmountByAppointmentId(10L))  // lenient mock
-                .thenReturn(BigDecimal.ZERO);
-
         lenient().when(appointmentRepository.findByPatientId(1L))
-                .thenReturn(java.util.List.of(appointment));
+                .thenReturn(List.of(appointment));
 
-        lenient().when(appointmentRepository.sumAppointmentPricesByPatient(1L))
-                .thenReturn(BigDecimal.valueOf(100));
+        lenient().when(paymentRepository.sumAmountByAppointmentId(10L))
+                .thenReturn(BigDecimal.ZERO);
 
         lenient().when(paymentRepository.sumPaymentsByPatient(1L))
                 .thenReturn(BigDecimal.valueOf(50));
-    }
 
+        lenient().when(appointmentRepository.sumAppointmentPricesByPatient(1L))
+                .thenReturn(BigDecimal.valueOf(100));
+    }
 
     @AfterEach
     void tearDown() {
@@ -108,157 +110,100 @@ class PaymentServiceTest {
     }
 
     private void mockAuthentication(String username, Role role) {
-        TestingAuthenticationToken auth =
-                new TestingAuthenticationToken(
-                        username,
-                        null,
-                        "ROLE_" + role.name()
-                );
+        TestingAuthenticationToken auth = new TestingAuthenticationToken(
+                username,
+                null,
+                "ROLE_" + role.name()
+        );
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
-    // PATIENT
-
     @Test
     void makePayment_success() {
-
-        mockAuthentication("patient1", Role.PATIENT);
-
         CreatePaymentRequest request = new CreatePaymentRequest();
-        request.setAmount(BigDecimal.valueOf(50));
         request.setAppointmentId(10L);
+        request.setAmount(BigDecimal.valueOf(50));
+        request.setPaymentMethod(PaymentMethod.CARD);
 
-        when(patientRepository.findById(1L))
-                .thenReturn(Optional.of(patient));
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+        when(paymentRepository.sumAmountByAppointmentId(10L)).thenReturn(BigDecimal.ZERO);
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            Payment p = invocation.getArgument(0);
+            p.setId(999L);
+            return p;
+        });
 
-        when(appointmentRepository.findById(10L))
-                .thenReturn(Optional.of(appointment));
-
-        when(paymentRepository.sumAmountByAppointmentId(10L))
-                .thenReturn(BigDecimal.ZERO);
-
-        when(paymentRepository.save(any()))
-                .thenAnswer(invocation -> {
-                    Payment payment = invocation.getArgument(0);
-                    payment.setAppointment(appointment);  // Set appointment in the payment
-                    return payment;
-                });
-
-        appointment.setDoctor(doctor);
-
-        PaymentResponse response = paymentService.makePayment(1L, request);
+        PaymentResponse response = paymentService.makePayment(request);
 
         assertNotNull(response);
-    }
-
-
-    @Test
-    void makePayment_exceedsAmount() {
-
-        mockAuthentication("patient1", Role.PATIENT);
-
-        CreatePaymentRequest request = new CreatePaymentRequest();
-        request.setAmount(BigDecimal.valueOf(200)); // Exceeds price
-        request.setAppointmentId(10L);
-
-        when(patientRepository.findById(1L))
-                .thenReturn(Optional.of(patient));
-
-        when(appointmentRepository.findById(10L))
-                .thenReturn(Optional.of(appointment));
-
-        when(paymentRepository.sumAmountByAppointmentId(10L))
-                .thenReturn(BigDecimal.valueOf(50));
-
-        assertThrows(BusinessException.class,
-                () -> paymentService.makePayment(1L, request));
+        assertEquals(BigDecimal.valueOf(50), response.getAmount());
+        assertEquals(10L, response.getAppointmentId());
     }
 
     @Test
-    void makePayment_alreadyPaid() {
-
-        mockAuthentication("patient1", Role.PATIENT);
-
+    void makePayment_exceedsAmount_throwsBusinessException() {
         CreatePaymentRequest request = new CreatePaymentRequest();
-        request.setAmount(BigDecimal.valueOf(50)); // Already fully paid
         request.setAppointmentId(10L);
+        request.setAmount(BigDecimal.valueOf(200));
+        request.setPaymentMethod(PaymentMethod.CARD);
 
-        when(patientRepository.findById(1L))
-                .thenReturn(Optional.of(patient));
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+        when(paymentRepository.sumAmountByAppointmentId(10L)).thenReturn(BigDecimal.valueOf(50));
 
-        when(appointmentRepository.findById(10L))
-                .thenReturn(Optional.of(appointment));
+        assertThrows(BusinessException.class, () -> paymentService.makePayment(request));
+    }
 
-        when(paymentRepository.sumAmountByAppointmentId(10L))
-                .thenReturn(BigDecimal.valueOf(100)); // Fully paid already
+    @Test
+    void makePayment_alreadyFullyPaid_throwsBusinessException() {
+        CreatePaymentRequest request = new CreatePaymentRequest();
+        request.setAppointmentId(10L);
+        request.setAmount(BigDecimal.valueOf(10));
+        request.setPaymentMethod(PaymentMethod.CASH);
 
-        assertThrows(BusinessException.class,
-                () -> paymentService.makePayment(1L, request));
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+        when(paymentRepository.sumAmountByAppointmentId(10L)).thenReturn(BigDecimal.valueOf(100));
+
+        assertThrows(BusinessException.class, () -> paymentService.makePayment(request));
     }
 
     @Test
     void getPaidAppointmentsByPatient_success() {
+        when(appointmentRepository.findByPatientId(1L)).thenReturn(List.of(appointment));
+        when(paymentRepository.sumAmountByAppointmentId(10L)).thenReturn(BigDecimal.valueOf(100));
 
-        mockAuthentication("patient1", Role.PATIENT);
+        var result = paymentService.getPaidAppointmentsByPatient();
 
-        when(patientRepository.findById(1L))
-                .thenReturn(Optional.of(patient));
-
-        when(appointmentRepository.findByPatientId(1L))
-                .thenReturn(java.util.List.of(appointment));
-
-        when(paymentRepository.sumAmountByAppointmentId(10L))
-                .thenReturn(BigDecimal.valueOf(100));
-
-        var appointments = paymentService.getPaidAppointmentsByPatient(1L);
-
-        assertEquals(1, appointments.size());
+        assertEquals(1, result.size());
+        assertEquals(10L, result.get(0).getId());
     }
 
     @Test
     void getUnpaidAppointmentsByPatient_success() {
+        when(appointmentRepository.findByPatientId(1L)).thenReturn(List.of(appointment));
+        when(paymentRepository.sumAmountByAppointmentId(10L)).thenReturn(BigDecimal.ZERO);
 
-        mockAuthentication("patient1", Role.PATIENT);
+        var result = paymentService.getUnpaidAppointmentsByPatient();
 
-        when(patientRepository.findById(1L))
-                .thenReturn(Optional.of(patient));
-
-        when(appointmentRepository.findByPatientId(1L))
-                .thenReturn(java.util.List.of(appointment));
-
-        when(paymentRepository.sumAmountByAppointmentId(10L))
-                .thenReturn(BigDecimal.ZERO);
-
-        var appointments = paymentService.getUnpaidAppointmentsByPatient(1L);
-
-        assertEquals(1, appointments.size());
+        assertEquals(1, result.size());
+        assertEquals(10L, result.get(0).getId());
     }
 
     @Test
     void getTotalPaidByPatient_success() {
+        when(paymentRepository.sumPaymentsByPatient(1L)).thenReturn(BigDecimal.valueOf(100));
 
-        when(paymentRepository.sumPaymentsByPatient(1L))
-                .thenReturn(BigDecimal.valueOf(100));
+        BigDecimal total = paymentService.getTotalPaidByPatient();
 
-        BigDecimal totalPaid = paymentService.getTotalPaidByPatient(1L);
-
-        assertEquals(BigDecimal.valueOf(100), totalPaid);
+        assertEquals(BigDecimal.valueOf(100), total);
     }
 
     @Test
     void getTotalPendingByPatient_success() {
+        when(paymentRepository.sumPaymentsByPatient(1L)).thenReturn(BigDecimal.valueOf(50));
+        when(appointmentRepository.sumAppointmentPricesByPatient(1L)).thenReturn(BigDecimal.valueOf(100));
 
-        when(paymentRepository.sumPaymentsByPatient(1L))
-                .thenReturn(BigDecimal.valueOf(50));
+        BigDecimal total = paymentService.getTotalPendingByPatient();
 
-        when(appointmentRepository.sumAppointmentPricesByPatient(1L))
-                .thenReturn(BigDecimal.valueOf(100));
-
-        when(patientRepository.findById(1L))
-                .thenReturn(Optional.of(patient));  // Ensure patient is returned from repo
-
-        BigDecimal totalPending = paymentService.getTotalPendingByPatient(1L);
-
-        assertEquals(BigDecimal.valueOf(50), totalPending);
+        assertEquals(BigDecimal.valueOf(50), total);
     }
 }

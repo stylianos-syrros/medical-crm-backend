@@ -19,11 +19,5 @@ public interface PatientService {
 
     List<DoctorResponse> getMyDoctors();
 
-    /*List<AppointmentResponse> getMyAppointments();
-
-    List<AppointmentResponse> getMyAppointmentsHistory(); 
-
-    List<AppointmentResponse> getMyUpcomingAppointments();
-
-    void cancelAppointment(Long appointmentId);*/
+    List<DoctorResponse> getAllDoctorsForBooking();
 }

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -17,14 +18,18 @@ public class AppointmentResponse {
     private LocalDate appointmentDate;
     private LocalTime appointmentTime;
     private AppointmentStatus status;
-    private String notes;
+    private String patientNotes;
+    private String doctorNotes;
 
     private Long patientId;
     private Long doctorId;
     private Long serviceId;
 
     private String patientName;
+    private String doctorName;
     private String serviceName;
+    private BigDecimal totalPaid;
+    private BigDecimal pendingAmount;
 
 }
 

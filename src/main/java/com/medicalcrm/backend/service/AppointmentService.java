@@ -4,11 +4,9 @@ import com.medicalcrm.backend.dto.request.CreateAppointmentRequest;
 import com.medicalcrm.backend.dto.request.UpdateAppointmentNotesRequest;
 import com.medicalcrm.backend.dto.request.UpdateAppointmentScheduleRequest;
 import com.medicalcrm.backend.dto.response.AppointmentResponse;
-import com.medicalcrm.backend.model.Appointment;
 import com.medicalcrm.backend.model.AppointmentStatus;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 
 public interface AppointmentService {
@@ -24,6 +22,13 @@ public interface AppointmentService {
     List<AppointmentResponse> getUpcomingAppointmentsForPatient();
 
     List<AppointmentResponse> getAppointmentsHistoryForPatient();
+
+    List<AppointmentResponse> getDoctorScheduledAppointmentsByDateForPatient(
+            Long doctorId,
+            LocalDate date);
+
+    void updateNotesByPatient(Long appointmentId,
+                              UpdateAppointmentNotesRequest request);
 
     // Doctor
     List<AppointmentResponse> getUpcomingAppointmentsForDoctor();

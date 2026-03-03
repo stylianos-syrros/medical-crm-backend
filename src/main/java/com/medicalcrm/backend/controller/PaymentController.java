@@ -21,93 +21,81 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @PostMapping("patient/{patientId}")
-    public PaymentResponse makePayment(
-            @PathVariable Long patientId,
-             @Valid @RequestBody CreatePaymentRequest request){
+    @PreAuthorize("hasRole('PATIENT')")
+    @PostMapping("patient/me")
+    public PaymentResponse makePayment(@Valid @RequestBody CreatePaymentRequest request){
 
-        return paymentService.makePayment(patientId, request);
+        return paymentService.makePayment(request);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("patient/{patientId}/paid")
-    public List<AppointmentResponse> getPaidAppointmentsByPatient(
-            @PathVariable Long patientId){
+    @PreAuthorize("hasRole('PATIENT')")
+    @GetMapping("patient/me/paid")
+    public List<AppointmentResponse> getPaidAppointmentsByPatient(){
 
-        return paymentService.getPaidAppointmentsByPatient(patientId);
+        return paymentService.getPaidAppointmentsByPatient();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/patient/{patientId}/unpaid")
-    public List<AppointmentResponse> getUnpaidAppointmentsByPatient(
-            @PathVariable Long patientId) {
+    @PreAuthorize("hasRole('PATIENT')")
+    @GetMapping("/patient/me/unpaid")
+    public List<AppointmentResponse> getUnpaidAppointmentsByPatient() {
 
-        return paymentService.getUnpaidAppointmentsByPatient(patientId);
+        return paymentService.getUnpaidAppointmentsByPatient();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/patient/{patientId}/total-paid")
-    public BigDecimal getTotalPaidByPatient(
-            @PathVariable Long patientId) {
+    @PreAuthorize("hasRole('PATIENT')")
+    @GetMapping("/patient/me/total-paid")
+    public BigDecimal getTotalPaidByPatient() {
 
-        return paymentService.getTotalPaidByPatient(patientId);
+        return paymentService.getTotalPaidByPatient();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/patient/{patientId}/total-pending")
-    public BigDecimal getTotalPendingByPatient(
-            @PathVariable Long patientId) {
+    @PreAuthorize("hasRole('PATIENT')")
+    @GetMapping("/patient/me/total-pending")
+    public BigDecimal getTotalPendingByPatient() {
 
-        return paymentService.getTotalPendingByPatient(patientId);
+        return paymentService.getTotalPendingByPatient();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PATIENT')")
-    @GetMapping("/patient/{patientId}/total-expected")
-    public BigDecimal getTotalExpectedByPatient(
-            @PathVariable Long patientId) {
+    @PreAuthorize("hasRole('PATIENT')")
+    @GetMapping("/patient/me/total-expected")
+    public BigDecimal getTotalExpectedByPatient() {
 
-        return paymentService.getTotalExpectedByPatient(patientId);
+        return paymentService.getTotalExpectedByPatient();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/doctor/{doctorId}/received")
-    public BigDecimal getTotalReceivedByDoctor(
-            @PathVariable Long doctorId) {
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/doctor/me/received")
+    public BigDecimal getTotalReceivedByDoctor() {
 
-        return paymentService.getTotalReceivedByDoctor(doctorId);
+        return paymentService.getTotalReceivedByDoctor();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/doctor/{doctorId}/pending")
-    public BigDecimal getTotalPendingByDoctor(
-            @PathVariable Long doctorId) {
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/doctor/me/pending")
+    public BigDecimal getTotalPendingByDoctor() {
 
-        return paymentService.getTotalPendingByDoctor(doctorId);
+        return paymentService.getTotalPendingByDoctor();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/doctor/{doctorId}/expected")
-    public BigDecimal getTotalExpectedByDoctor(
-            @PathVariable Long doctorId) {
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/doctor/me/expected")
+    public BigDecimal getTotalExpectedByDoctor() {
 
-        return paymentService.getTotalExpectedByDoctor(doctorId);
+        return paymentService.getTotalExpectedByDoctor();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/doctor/{doctorId}/paid")
-    public List<AppointmentResponse> getPaidAppointmentsByDoctor(
-            @PathVariable Long doctorId){
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/doctor/me/paid")
+    public List<AppointmentResponse> getPaidAppointmentsByDoctor(){
 
-        return paymentService.getPaidAppointmentsByDoctor(doctorId);
+        return paymentService.getPaidAppointmentsByDoctor();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
-    @GetMapping("/doctor/{doctorId}/unpaid")
-    public List<AppointmentResponse> getUnpaidAppointmentsByDoctor(
-            @PathVariable Long doctorId){
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/doctor/me/unpaid")
+    public List<AppointmentResponse> getUnpaidAppointmentsByDoctor(){
 
-        return paymentService.getUnpaidAppointmentsByDoctor(doctorId);
+        return paymentService.getUnpaidAppointmentsByDoctor();
     }
 
     @PreAuthorize("hasRole('ADMIN')")

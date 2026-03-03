@@ -16,12 +16,14 @@ public class AppointmentMapper {
         response.setAppointmentDate(appointment.getAppointmentDate());
         response.setAppointmentTime(appointment.getAppointmentTime());
         response.setStatus(appointment.getStatus());
-        response.setNotes(appointment.getNotes());
+        response.setPatientNotes(appointment.getPatientNotes());
+        response.setDoctorNotes(appointment.getDoctorNotes());
 
         response.setPatientId(appointment.getPatient().getId());
         response.setDoctorId(appointment.getDoctor().getId());
         response.setServiceId(appointment.getService().getId());
         response.setPatientName(appointment.getPatient().getFirstName() + " " + appointment.getPatient().getLastName());
+        response.setDoctorName(appointment.getDoctor().getFirstName() + " " + appointment.getDoctor().getLastName());
         response.setServiceName(appointment.getService().getName());
 
         return response;
@@ -38,6 +40,7 @@ public class AppointmentMapper {
         appointment.setAppointmentDate(request.getAppointmentDate());
         appointment.setAppointmentTime(request.getAppointmentTime());
         appointment.setStatus(AppointmentStatus.SCHEDULED);
+        appointment.setPatientNotes(request.getNotes());
         appointment.setPatient(patient);
         appointment.setDoctor(doctor);
         appointment.setService(service);
@@ -48,7 +51,7 @@ public class AppointmentMapper {
     public static void updateNotes(Appointment appointment,
                                    UpdateAppointmentNotesRequest request) {
 
-        appointment.setNotes(request.getNotes());
+        appointment.setDoctorNotes(request.getNotes());
     }
 
     public static void updateSchedule(Appointment appointment,

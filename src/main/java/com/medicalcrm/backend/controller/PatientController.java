@@ -51,4 +51,11 @@ public class PatientController {
 
         return patientService.getMyDoctors();
     }
+
+    @PreAuthorize("hasRole('PATIENT')")
+    @GetMapping("/me/doctors/all")
+    public List<DoctorResponse> getAllDoctorsForBooking() {
+
+        return patientService.getAllDoctorsForBooking();
+    }
 }

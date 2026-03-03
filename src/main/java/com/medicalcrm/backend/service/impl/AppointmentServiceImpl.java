@@ -18,14 +18,16 @@ import com.medicalcrm.backend.repository.*;
 
 import com.medicalcrm.backend.service.AppointmentService;
 
-import lombok.RequiredArgsConstructor; //?
-import lombok.extern.slf4j.Slf4j; //?
+import lombok.RequiredArgsConstructor; 
+import lombok.extern.slf4j.Slf4j; 
 
-import org.springframework.stereotype.Service; //?
-import org.springframework.transaction.annotation.Transactional; //?
+import org.springframework.stereotype.Service; 
+import org.springframework.transaction.annotation.Transactional; 
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 
@@ -53,6 +55,16 @@ public class AppointmentServiceImpl  implements AppointmentService{
 
         MedicalService service = medicalServiceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new NotFoundException("Service not found"));
+
+        validateAppointmentTimeSlot(request.getAppointmentTime());
+        validateAppointmentDateTimeInFuture(request.getAppointmentDate(), request.getAppointmentTime());
+        validateNoScheduleCollisions(
+                patient.getId(),
+                doctor.getId(),
+                request.getAppointmentDate(),
+                request.getAppointmentTime(),
+                service.getDuration(),
+                null);
 
         Appointment appointment = AppointmentMapper.toEntity(request, patient, doctor, service);
         Appointment saved = appointmentRepository.save(appointment);
@@ -102,6 +114,16 @@ public class AppointmentServiceImpl  implements AppointmentService{
             throw new BusinessException("Only scheduled appointments can be rescheduled");
         }
 
+        validateAppointmentTimeSlot(request.getAppointmentTime());
+        validateAppointmentDateTimeInFuture(request.getAppointmentDate(), request.getAppointmentTime());
+        validateNoScheduleCollisions(
+                patient.getId(),
+                appointment.getDoctor().getId(),
+                request.getAppointmentDate(),
+                request.getAppointmentTime(),
+                appointment.getService().getDuration(),
+                appointmentId);
+
         AppointmentMapper.updateSchedule(appointment, request);
 
         log.info("Patient {} rescheduled appointment {}", patient.getId(), appointmentId);
@@ -113,11 +135,12 @@ public class AppointmentServiceImpl  implements AppointmentService{
     public List<AppointmentResponse> getUpcomingAppointmentsForPatient() {
 
         Patient patient = getCurrentPatientEntity();
+        LocalDateTime now = LocalDateTime.now();
 
-        return appointmentRepository.findByPatientIdAndStatus(
-                patient.getId(),
-                AppointmentStatus.SCHEDULED)
+        return appointmentRepository.findByPatientId(patient.getId())
                 .stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.SCHEDULED)
+                .filter(a -> isAppointmentInFuture(a, now))
                 .map(AppointmentMapper::toResponse)
                 .toList();
     }
@@ -127,13 +150,56 @@ public class AppointmentServiceImpl  implements AppointmentService{
     public List<AppointmentResponse> getAppointmentsHistoryForPatient(){
 
         Patient patient = getCurrentPatientEntity();
+        LocalDateTime now = LocalDateTime.now();
 
-        return appointmentRepository.findByPatientIdAndStatus(
-                patient.getId(),
-                AppointmentStatus.COMPLETED)
+        return appointmentRepository.findByPatientId(patient.getId())
+                .stream()
+                .filter(a -> isAppointmentInHistory(a, now))
+                .map(AppointmentMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppointmentResponse> getDoctorScheduledAppointmentsByDateForPatient(
+            Long doctorId,
+            LocalDate date) {
+
+        if (!doctorRepository.existsById(doctorId)) {
+            throw new NotFoundException("Doctor not found");
+        }
+
+        return appointmentRepository
+                .findByDoctorIdAndAppointmentDateAndStatus(
+                        doctorId,
+                        date,
+                        AppointmentStatus.SCHEDULED)
                 .stream()
                 .map(AppointmentMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    public void updateNotesByPatient(Long appointmentId,
+                                     UpdateAppointmentNotesRequest request) {
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new NotFoundException("Appointment not found"));
+
+        Patient patient = getCurrentPatientEntity();
+
+        if (!appointment.getPatient().getId().equals(patient.getId())) {
+            throw new BusinessException("Not your appointment");
+        }
+
+        if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
+            throw new BusinessException("Notes can be updated only for scheduled appointments");
+        }
+
+        appointment.setPatientNotes(request.getNotes());
+
+        log.info("Patient {} updated notes for appointment {}",
+                patient.getId(), appointmentId);
     }
 
     // DOCTOR
@@ -143,12 +209,13 @@ public class AppointmentServiceImpl  implements AppointmentService{
     public List<AppointmentResponse> getUpcomingAppointmentsForDoctor() {
 
         Doctor doctor = getCurrentDoctorEntity();
+        LocalDateTime now = LocalDateTime.now();
 
         return appointmentRepository
-                .findByDoctorIdAndStatus(
-                        doctor.getId(),
-                        AppointmentStatus.SCHEDULED)
+                .findByDoctorId(doctor.getId())
                 .stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.SCHEDULED)
+                .filter(a -> isAppointmentInFuture(a, now))
                 .map(AppointmentMapper::toResponse)
                 .toList();
     }
@@ -158,15 +225,16 @@ public class AppointmentServiceImpl  implements AppointmentService{
     public List<AppointmentResponse> getAppointmentsHistoryForDoctor() {
 
         Doctor doctor = getCurrentDoctorEntity();
+        LocalDateTime now = LocalDateTime.now();
 
         return appointmentRepository
-                .findByDoctorIdAndStatus(
-                        doctor.getId(),
-                        AppointmentStatus.COMPLETED)
+                .findByDoctorId(doctor.getId())
                 .stream()
+                .filter(a -> isAppointmentInHistory(a, now))
                 .map(AppointmentMapper::toResponse)
                 .toList();
     }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -228,6 +296,15 @@ public class AppointmentServiceImpl  implements AppointmentService{
             throw new BusinessException(
                     "Appointment cannot be completed unless fully paid");
         }
+
+        LocalDateTime appointmentDateTime = LocalDateTime.of(
+            appointment.getAppointmentDate(),
+            appointment.getAppointmentTime()
+        );
+        if (appointmentDateTime.isAfter(LocalDateTime.now())) {
+            throw new BusinessException("Cannot complete a future appointment");
+        }
+
 
         appointment.setStatus(AppointmentStatus.COMPLETED);
 
@@ -337,6 +414,122 @@ public class AppointmentServiceImpl  implements AppointmentService{
         User user = getCurrentUserEntity();
         return doctorRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new NotFoundException("Doctor profile not found"));
+    }
+
+    private void validateAppointmentTimeSlot(LocalTime appointmentTime) {
+        LocalTime start = LocalTime.of(9, 0);
+        LocalTime end = LocalTime.of(20, 0);
+
+        if (appointmentTime.isBefore(start) || appointmentTime.isAfter(end)) {
+            throw new BusinessException("Appointments must be between 09:00 and 20:00");
+        }
+
+        boolean minuteAligned = appointmentTime.getMinute() == 0 || appointmentTime.getMinute() == 30;
+        boolean secondAligned = appointmentTime.getSecond() == 0 && appointmentTime.getNano() == 0;
+
+        if (!minuteAligned || !secondAligned) {
+            throw new BusinessException("Appointments must be on 30-minute slots");
+        }
+    }
+
+    private void validateNoScheduleCollisions(
+            Long patientId,
+            Long doctorId,
+            LocalDate date,
+            LocalTime time,
+            Integer durationMinutes,
+            Long excludeAppointmentId) {
+        int requestedDuration = normalizeDuration(durationMinutes);
+        LocalTime requestedEnd = time.plusMinutes(requestedDuration);
+
+        List<Appointment> patientAppointments = appointmentRepository
+                .findByPatientIdAndAppointmentDateAndStatus(
+                        patientId,
+                        date,
+                        AppointmentStatus.SCHEDULED);
+
+        List<Appointment> doctorAppointments = appointmentRepository
+                .findByDoctorIdAndAppointmentDateAndStatus(
+                        doctorId,
+                        date,
+                        AppointmentStatus.SCHEDULED);
+
+        boolean patientHasCollision = patientAppointments.stream()
+                .filter(a -> excludeAppointmentId == null || !a.getId().equals(excludeAppointmentId))
+                .anyMatch(a -> isOverlapping(
+                        time,
+                        requestedEnd,
+                        a.getAppointmentTime(),
+                        a.getAppointmentTime().plusMinutes(normalizeDuration(a.getService().getDuration()))));
+
+        boolean doctorHasCollision = doctorAppointments.stream()
+                .filter(a -> excludeAppointmentId == null || !a.getId().equals(excludeAppointmentId))
+                .anyMatch(a -> isOverlapping(
+                        time,
+                        requestedEnd,
+                        a.getAppointmentTime(),
+                        a.getAppointmentTime().plusMinutes(normalizeDuration(a.getService().getDuration()))));
+
+        if (patientHasCollision) {
+            throw new BusinessException("You already have an appointment at this date and time");
+        }
+
+        if (doctorHasCollision) {
+            throw new BusinessException("Doctor is not available at this date and time");
+        }
+    }
+
+    private int normalizeDuration(Integer durationMinutes) {
+        if (durationMinutes == null || durationMinutes <= 0) {
+            return 30;
+        }
+        return durationMinutes;
+    }
+
+    private boolean isOverlapping(
+            LocalTime startA,
+            LocalTime endA,
+            LocalTime startB,
+            LocalTime endB) {
+
+        return startA.isBefore(endB) && startB.isBefore(endA);
+    }
+
+    private void validateAppointmentDateTimeInFuture(LocalDate date, LocalTime time) {
+        LocalDateTime requested = LocalDateTime.of(date, time);
+        if (!requested.isAfter(LocalDateTime.now())) {
+            throw new BusinessException("Appointment date/time must be in the future");
+        }
+    }
+
+    private boolean isAppointmentInFuture(Appointment appointment, LocalDateTime now) {
+        if (appointment.getAppointmentDate() == null || appointment.getAppointmentTime() == null) {
+            return false;
+        }
+        LocalDateTime appointmentDateTime = LocalDateTime.of(
+                appointment.getAppointmentDate(),
+                appointment.getAppointmentTime());
+        return appointmentDateTime.isAfter(now);
+    }
+
+    private boolean isAppointmentInHistory(Appointment appointment, LocalDateTime now) {
+        AppointmentStatus status = appointment.getStatus();
+
+        if (status == AppointmentStatus.COMPLETED || status == AppointmentStatus.CANCELLED) {
+            return true;
+        }
+
+        if (status == AppointmentStatus.SCHEDULED) {
+            if (appointment.getAppointmentDate() == null || appointment.getAppointmentTime() == null) {
+                return false;
+            }
+            LocalDateTime appointmentDateTime = LocalDateTime.of(
+                    appointment.getAppointmentDate(),
+                    appointment.getAppointmentTime());
+            return !appointmentDateTime.isAfter(now);
+        }
+
+        return false;
     }
 
 }

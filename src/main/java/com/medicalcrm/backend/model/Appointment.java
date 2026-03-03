@@ -31,8 +31,11 @@ public class Appointment {
     @Column(nullable = false)
     private AppointmentStatus status;
 
-    @Column(columnDefinition = "TEXT")
-    private String notes;
+    @Column(name = "patient_notes", columnDefinition = "TEXT")
+    private String patientNotes;
+
+    @Column(name = "doctor_notes", columnDefinition = "TEXT")
+    private String doctorNotes;
 
     @ManyToOne
     @JoinColumn(name = "patient_id", nullable = false)

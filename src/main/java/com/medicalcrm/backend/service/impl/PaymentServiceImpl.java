@@ -5,24 +5,22 @@ import com.medicalcrm.backend.dto.response.AppointmentResponse;
 import com.medicalcrm.backend.dto.response.PaymentResponse;
 import com.medicalcrm.backend.exception.BusinessException;
 import com.medicalcrm.backend.exception.NotFoundException;
-
 import com.medicalcrm.backend.mapper.AppointmentMapper;
 import com.medicalcrm.backend.mapper.PaymentMapper;
-import com.medicalcrm.backend.model.*;
-
+import com.medicalcrm.backend.model.Appointment;
+import com.medicalcrm.backend.model.Doctor;
+import com.medicalcrm.backend.model.Patient;
+import com.medicalcrm.backend.model.Payment;
+import com.medicalcrm.backend.model.PaymentStatus;
+import com.medicalcrm.backend.model.User;
 import com.medicalcrm.backend.repository.AppointmentRepository;
 import com.medicalcrm.backend.repository.DoctorRepository;
 import com.medicalcrm.backend.repository.PatientRepository;
 import com.medicalcrm.backend.repository.PaymentRepository;
-
+import com.medicalcrm.backend.repository.UserRepository;
 import com.medicalcrm.backend.service.PaymentService;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,135 +34,75 @@ import java.util.Optional;
 @Transactional
 @RequiredArgsConstructor
 @Slf4j
-
-public class PaymentServiceImpl implements PaymentService{
+public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
+    private final UserRepository userRepository;
 
     // DOCTOR
 
     @Override
     @Transactional(readOnly = true)
-    public BigDecimal getTotalReceivedByDoctor(Long doctorId){
-
-        Doctor doctor = getDoctorEntity(doctorId);
-        checkDoctorOwnership(doctor);
-
-        BigDecimal received = Optional.ofNullable(
-                paymentRepository.sumPaymentsToDoctor(doctorId)
-        ).orElse(BigDecimal.ZERO);
-
-        log.info("Doctor {} total received: {}", doctorId, received);
-
-        return received;
+    public BigDecimal getTotalReceivedByDoctor() {
+        Doctor doctor = getCurrentDoctorEntity();
+        return Optional.ofNullable(paymentRepository.sumPaymentsToDoctor(doctor.getId()))
+                .orElse(BigDecimal.ZERO);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public BigDecimal getTotalExpectedByDoctor(Long doctorId){
-
-        Doctor doctor = getDoctorEntity(doctorId);
-        checkDoctorOwnership(doctor);
-
-        BigDecimal expected = Optional.ofNullable(
-                appointmentRepository.sumAppointmentPricesToDoctor(doctorId)
-        ).orElse(BigDecimal.ZERO);
-
-        log.info("Doctor {} total expected: {}", doctorId, expected);
-
-        return expected;
+    public BigDecimal getTotalExpectedByDoctor() {
+        Doctor doctor = getCurrentDoctorEntity();
+        return Optional.ofNullable(appointmentRepository.sumAppointmentPricesToDoctor(doctor.getId()))
+                .orElse(BigDecimal.ZERO);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public BigDecimal getTotalPendingByDoctor(Long doctorId){
-
-        Doctor doctor = getDoctorEntity(doctorId);
-        checkDoctorOwnership(doctor);
-
-        BigDecimal received = getTotalReceivedByDoctor(doctorId);
-        BigDecimal expected = getTotalExpectedByDoctor(doctorId);
-
+    public BigDecimal getTotalPendingByDoctor() {
+        BigDecimal received = getTotalReceivedByDoctor();
+        BigDecimal expected = getTotalExpectedByDoctor();
         BigDecimal pending = expected.subtract(received);
-
-        if (pending.compareTo(BigDecimal.ZERO) < 0) {
-
-            log.error(
-                    "Negative pending detected for doctor {} (total={}, received={})",
-                    doctorId, expected, received
-            );
-
-            pending = BigDecimal.ZERO;
-        }
-
-        log.info("Doctor {} total pending: {}", doctorId, pending);
-
-        return pending;
+        return pending.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : pending;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> getPaidAppointmentsByDoctor(Long doctorId) {
-
-        Doctor doctor = getDoctorEntity(doctorId);
-        checkDoctorOwnership(doctor);
-
-        List<Appointment> appointments =
-                appointmentRepository.findByDoctorId(doctorId);
-
-        return appointments.stream()
-                .filter(a -> {
-                    BigDecimal paid =
-                            paymentRepository.sumAmountByAppointmentId(a.getId());
-                    if (paid == null) {
-                        paid = BigDecimal.ZERO;
-                    }
-                    BigDecimal price = a.getService().getPrice();
-                    return paid.compareTo(price) >= 0;
-                })
-                .map(AppointmentMapper::toResponse)
+    public List<AppointmentResponse> getPaidAppointmentsByDoctor() {
+        Doctor doctor = getCurrentDoctorEntity();
+        return appointmentRepository.findByDoctorId(doctor.getId()).stream()
+                .filter(a -> Optional.ofNullable(paymentRepository.sumAmountByAppointmentId(a.getId()))
+                        .orElse(BigDecimal.ZERO)
+                        .compareTo(a.getService().getPrice()) >= 0)
+                .map(this::toAppointmentResponseWithPaymentInfo)
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> getUnpaidAppointmentsByDoctor(Long doctorId){
-
-        Doctor doctor = getDoctorEntity(doctorId);
-        checkDoctorOwnership(doctor);
-
-        List<Appointment> appointments =
-                appointmentRepository.findByDoctorId(doctorId);
-
-        return appointments.stream()
-                .filter(a -> {
-                    BigDecimal paid =
-                            paymentRepository.sumAmountByAppointmentId(a.getId());
-                    if (paid == null) {
-                        paid = BigDecimal.ZERO;
-                    }
-                    BigDecimal price = a.getService().getPrice();
-                    return paid.compareTo(price) < 0;
-                })
-                .map(AppointmentMapper::toResponse)
+    public List<AppointmentResponse> getUnpaidAppointmentsByDoctor() {
+        Doctor doctor = getCurrentDoctorEntity();
+        return appointmentRepository.findByDoctorId(doctor.getId()).stream()
+                .filter(a -> Optional.ofNullable(paymentRepository.sumAmountByAppointmentId(a.getId()))
+                        .orElse(BigDecimal.ZERO)
+                        .compareTo(a.getService().getPrice()) < 0)
+                .map(this::toAppointmentResponseWithPaymentInfo)
                 .toList();
     }
 
     // PATIENT
 
     @Override
-    public PaymentResponse makePayment(Long patientId, CreatePaymentRequest request) {
-
-        Patient patient = getPatientEntity(patientId);
-        checkPatientOwnership(patient);
+    public PaymentResponse makePayment(CreatePaymentRequest request) {
+        Patient patient = getCurrentPatientEntity();
 
         Appointment appointment = appointmentRepository.findById(request.getAppointmentId())
                 .orElseThrow(() -> new NotFoundException("Appointment not found"));
 
-        if (!appointment.getPatient().getId().equals(patientId)) {
+        if (!appointment.getPatient().getId().equals(patient.getId())) {
             throw new BusinessException("This appointment does not belong to patient");
         }
 
@@ -180,124 +118,71 @@ public class PaymentServiceImpl implements PaymentService{
         }
 
         BigDecimal paymentAmount = request.getAmount();
-
         if (paymentAmount.compareTo(remaining) > 0) {
             throw new BusinessException("Payment exceeds remaining amount");
         }
 
         Payment payment = PaymentMapper.toEntity(request, appointment, patient);
-
-        payment.setStatus(PaymentStatus.PAID);
         payment.setPaidAt(LocalDateTime.now());
+
+        BigDecimal newTotalPaid = totalPaid.add(paymentAmount);
+        payment.setStatus(newTotalPaid.compareTo(price) >= 0 ? PaymentStatus.PAID : PaymentStatus.PARTIAL);
 
         Payment saved = paymentRepository.save(payment);
 
         log.info("Patient {} paid {} for appointment {}",
-                patientId, paymentAmount, appointment.getId());
+                patient.getId(), paymentAmount, appointment.getId());
 
         return PaymentMapper.toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> getPaidAppointmentsByPatient(Long patientId) {
-
-        Patient patient = getPatientEntity(patientId);
-        checkPatientOwnership(patient);
-
-        List<Appointment> appointments =
-                appointmentRepository.findByPatientId(patientId);
-
-        return appointments.stream()
-                .filter(a -> {
-
-                    BigDecimal paid = Optional.ofNullable(
-                            paymentRepository.sumAmountByAppointmentId(a.getId())
-                    ).orElse(BigDecimal.ZERO);
-
-                    BigDecimal price = a.getService().getPrice();
-
-                    return paid.compareTo(price) >= 0;
-                })
-                .map(AppointmentMapper::toResponse)
-                .toList();
-    }
-
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<AppointmentResponse> getUnpaidAppointmentsByPatient(Long patientId) {
-
-        Patient patient = getPatientEntity(patientId);
-        checkPatientOwnership(patient);
-
-        List<Appointment> appointments =
-                appointmentRepository.findByPatientId(patientId);
-
-        return appointments.stream()
-                .filter(a -> {
-
-                    BigDecimal paid = Optional.ofNullable(
-                            paymentRepository.sumAmountByAppointmentId(a.getId())
-                    ).orElse(BigDecimal.ZERO);
-
-                    BigDecimal price = a.getService().getPrice();
-
-                    return paid.compareTo(price) < 0;
-                })
-                .map(AppointmentMapper::toResponse)
+    public List<AppointmentResponse> getPaidAppointmentsByPatient() {
+        Patient patient = getCurrentPatientEntity();
+        return appointmentRepository.findByPatientId(patient.getId()).stream()
+                .filter(a -> Optional.ofNullable(paymentRepository.sumAmountByAppointmentId(a.getId()))
+                        .orElse(BigDecimal.ZERO)
+                        .compareTo(a.getService().getPrice()) >= 0)
+                .map(this::toAppointmentResponseWithPaymentInfo)
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public BigDecimal getTotalPaidByPatient(Long patientId) {
-
-        BigDecimal totalPaid = Optional.ofNullable(
-                paymentRepository.sumPaymentsByPatient(patientId)
-        ).orElse(BigDecimal.ZERO);
-
-        log.info("Patient {} total paid: {}", patientId, totalPaid);
-
-        return totalPaid;
+    public List<AppointmentResponse> getUnpaidAppointmentsByPatient() {
+        Patient patient = getCurrentPatientEntity();
+        return appointmentRepository.findByPatientId(patient.getId()).stream()
+                .filter(a -> Optional.ofNullable(paymentRepository.sumAmountByAppointmentId(a.getId()))
+                        .orElse(BigDecimal.ZERO)
+                        .compareTo(a.getService().getPrice()) < 0)
+                .map(this::toAppointmentResponseWithPaymentInfo)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public BigDecimal getTotalPendingByPatient(Long patientId) {
+    public BigDecimal getTotalPaidByPatient() {
+        Patient patient = getCurrentPatientEntity();
+        return Optional.ofNullable(paymentRepository.sumPaymentsByPatient(patient.getId()))
+                .orElse(BigDecimal.ZERO);
+    }
 
-        Patient patient = getPatientEntity(patientId);
-        checkPatientOwnership(patient);
-
-        BigDecimal paid = getTotalPaidByPatient(patientId);
-        BigDecimal expected = getTotalExpectedByPatient(patientId);
-
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal getTotalPendingByPatient() {
+        BigDecimal paid = getTotalPaidByPatient();
+        BigDecimal expected = getTotalExpectedByPatient();
         BigDecimal pending = expected.subtract(paid);
-
-        if (pending.compareTo(BigDecimal.ZERO) < 0) {
-            pending = BigDecimal.ZERO;
-        }
-
-        log.info("Patient {} pending: {}", patientId, pending);
-
-
-        return pending;
+        return pending.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : pending;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public BigDecimal getTotalExpectedByPatient(Long patientId) {
-
-        Patient patient = getPatientEntity(patientId);
-        checkPatientOwnership(patient);
-
-        BigDecimal expected = Optional.ofNullable(
-                appointmentRepository.sumAppointmentPricesByPatient(patientId)
-        ).orElse(BigDecimal.ZERO);
-
-        log.info("Patient {} total expected: {}", patientId, expected);
-
-        return expected;
+    public BigDecimal getTotalExpectedByPatient() {
+        Patient patient = getCurrentPatientEntity();
+        return Optional.ofNullable(appointmentRepository.sumAppointmentPricesByPatient(patient.getId()))
+                .orElse(BigDecimal.ZERO);
     }
 
     // ADMIN
@@ -305,51 +190,46 @@ public class PaymentServiceImpl implements PaymentService{
     @Override
     @Transactional(readOnly = true)
     public List<PaymentResponse> getAllPayments() {
-
-        return paymentRepository.findAll()
-                .stream()
+        return paymentRepository.findAll().stream()
                 .map(PaymentMapper::toResponse)
                 .toList();
     }
 
     // HELPERS
-    private Patient getPatientEntity(Long patientId) {
-        return patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Patient not found"));
-    }
 
-    private Doctor getDoctorEntity(Long doctorId) {
-        return doctorRepository.findById(doctorId)
-                .orElseThrow(() -> new NotFoundException("Doctor not found"));
-    }
-
-    private Authentication getAuthentication() {
-        return SecurityContextHolder.getContext().getAuthentication();
+    private AppointmentResponse toAppointmentResponseWithPaymentInfo(Appointment appointment) {
+        AppointmentResponse response = AppointmentMapper.toResponse(appointment);
+        BigDecimal totalPaid = Optional.ofNullable(
+                paymentRepository.sumAmountByAppointmentId(appointment.getId())
+        ).orElse(BigDecimal.ZERO);
+        BigDecimal price = Optional.ofNullable(appointment.getService().getPrice()).orElse(BigDecimal.ZERO);
+        BigDecimal pending = price.subtract(totalPaid);
+        if (pending.compareTo(BigDecimal.ZERO) < 0) {
+            pending = BigDecimal.ZERO;
+        }
+        response.setTotalPaid(totalPaid);
+        response.setPendingAmount(pending);
+        return response;
     }
 
     private String getCurrentUsername() {
-        return getAuthentication().getName();
+        return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 
-    private boolean isAdmin() {
-        return getAuthentication().getAuthorities()
-                .contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+    private User getCurrentUserEntity() {
+        return userRepository.findByUsername(getCurrentUsername())
+                .orElseThrow(() -> new NotFoundException("User not found"));
     }
 
-    private void checkPatientOwnership(Patient patient) {
-
-        if (!isAdmin() &&
-                !patient.getUser().getUsername().equals(getCurrentUsername())) {
-            throw new AccessDeniedException("Access denied");
-        }
+    private Patient getCurrentPatientEntity() {
+        User user = getCurrentUserEntity();
+        return patientRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new NotFoundException("Patient profile not found"));
     }
 
-    private void checkDoctorOwnership(Doctor doctor) {
-
-        if (!isAdmin() &&
-                !doctor.getUser().getUsername().equals(getCurrentUsername())) {
-            throw new AccessDeniedException("Access denied");
-        }
+    private Doctor getCurrentDoctorEntity() {
+        User user = getCurrentUserEntity();
+        return doctorRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new NotFoundException("Doctor profile not found"));
     }
-
 }

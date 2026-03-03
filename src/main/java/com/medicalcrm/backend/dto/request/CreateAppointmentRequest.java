@@ -1,6 +1,7 @@
 package com.medicalcrm.backend.dto.request;
 
 import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -11,7 +12,7 @@ import java.time.LocalTime;
 public class CreateAppointmentRequest {
 
     @NotNull(message = "Date is required")
-    @Future(message = "Date must be in the future")
+    @FutureOrPresent(message = "Date must be today or in the future")
     private LocalDate appointmentDate;
 
     @NotNull(message = "Time is required")
@@ -22,4 +23,6 @@ public class CreateAppointmentRequest {
 
     @NotNull(message = "Service is required")
     private Long serviceId;
+
+    private String notes;
 }

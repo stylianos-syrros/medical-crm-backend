@@ -61,6 +61,24 @@ public class AppointmentController {
         return appointmentService.getAppointmentsHistoryForPatient();
     }
 
+    @PreAuthorize("hasRole('PATIENT')")
+    @GetMapping("/patient/me/doctor/{doctorId}/date")
+    public List<AppointmentResponse> getDoctorScheduledAppointmentsByDateForPatient(
+            @PathVariable Long doctorId,
+            @RequestParam LocalDate date) {
+
+        return appointmentService.getDoctorScheduledAppointmentsByDateForPatient(doctorId, date);
+    }
+
+    @PreAuthorize("hasRole('PATIENT')")
+    @PutMapping("/patient/me/{appointmentId}/notes")
+    public void updateNotesByPatient(
+            @PathVariable Long appointmentId,
+            @Valid @RequestBody UpdateAppointmentNotesRequest request) {
+
+        appointmentService.updateNotesByPatient(appointmentId, request);
+    }
+
     // DOCTOR self endpoints
 
     @PreAuthorize("hasRole('DOCTOR')")
