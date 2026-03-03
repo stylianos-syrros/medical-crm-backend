@@ -87,6 +87,15 @@ public class UserController {
         );
     }
 
+    @PreAuthorize("isAuthenticated()")
+    @PutMapping("/me/password")
+    public void changeMyPassword(@Valid @RequestBody ChangePasswordRequest request) {
+        userService.changeMyPassword(
+                request.getOldPassword(),
+                request.getNewPassword()
+        );
+    }
+
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/role")
     public void changeRole(

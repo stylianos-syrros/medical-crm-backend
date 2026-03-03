@@ -25,6 +25,10 @@ public interface UserService {
                         String newPassword
     );
 
+    void changeMyPassword(String oldPassword,
+                          String newPassword
+    );
+
     void changeRole(Long usrId, Role role);
 
     void deleteUser(Long userId);

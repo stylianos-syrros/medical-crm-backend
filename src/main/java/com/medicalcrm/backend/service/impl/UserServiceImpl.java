@@ -29,6 +29,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.List;
+import java.util.Optional;
+import com.medicalcrm.backend.model.Doctor;
+import com.medicalcrm.backend.model.Patient;
 
 @Service
 @RequiredArgsConstructor
@@ -104,8 +107,13 @@ public class UserServiceImpl implements UserService {
                 .map(user -> {
                     UserResponse response = UserMapper.toResponse(user);
                     Long userId = user.getId();
-                    response.setHasDoctorProfile(doctorRepository.findByUserId(userId).isPresent());
-                    response.setHasPatientProfile(patientRepository.findByUserId(userId).isPresent());
+                    Optional<Doctor> doctorProfile = doctorRepository.findByUserId(userId);
+                    Optional<Patient> patientProfile = patientRepository.findByUserId(userId);
+
+                    response.setHasDoctorProfile(doctorProfile.isPresent());
+                    response.setHasPatientProfile(patientProfile.isPresent());
+                    response.setDoctorProfileId(doctorProfile.map(Doctor::getId).orElse(null));
+                    response.setPatientProfileId(patientProfile.map(Patient::getId).orElse(null));
                     return response;
                 })
                 .toList();
@@ -138,6 +146,18 @@ public class UserServiceImpl implements UserService {
 
         User user = getUserEntity(userId);
         checkOwnership(user);
+        applyPasswordChange(user, oldPassword, newPassword);
+    }
+
+    @Override
+    public void changeMyPassword(String oldPassword, String newPassword) {
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        applyPasswordChange(user, oldPassword, newPassword);
+    }
+
+    private void applyPasswordChange(User user, String oldPassword, String newPassword) {
 
         if (oldPassword.equals(newPassword)) {
             throw new BusinessException("New password must be different from old password");
@@ -149,7 +169,7 @@ public class UserServiceImpl implements UserService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
 
-        log.info("User {} changed password", userId);
+        log.info("User {} changed password", user.getId());
     }
 
     @Override

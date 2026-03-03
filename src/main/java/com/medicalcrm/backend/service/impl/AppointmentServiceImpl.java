@@ -87,6 +87,14 @@ public class AppointmentServiceImpl  implements AppointmentService{
             throw new BusinessException("Not your appointment");
         }
 
+        if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
+            throw new BusinessException("Only scheduled appointments can be cancelled");
+        }
+
+        if (!isAppointmentInFuture(appointment, LocalDateTime.now())) {
+            throw new BusinessException("Only future appointments can be cancelled");
+        }
+
         if (paymentRepository.existsByAppointmentId(appointmentId)) {
             throw new BusinessException("Cannot cancel paid appointment");
         }
@@ -192,10 +200,6 @@ public class AppointmentServiceImpl  implements AppointmentService{
             throw new BusinessException("Not your appointment");
         }
 
-        if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
-            throw new BusinessException("Notes can be updated only for scheduled appointments");
-        }
-
         appointment.setPatientNotes(request.getNotes());
 
         log.info("Patient {} updated notes for appointment {}",
@@ -262,6 +266,14 @@ public class AppointmentServiceImpl  implements AppointmentService{
             throw new AccessDeniedException("Access denied");
         }
 
+        if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
+            throw new BusinessException("Only scheduled appointments can be cancelled");
+        }
+
+        if (!isAppointmentInFuture(appointment, LocalDateTime.now())) {
+            throw new BusinessException("Only future appointments can be cancelled");
+        }
+
         if (paymentRepository.existsByAppointmentId(appointmentId)){
             throw new BusinessException("Cannot cancel appointment with payments");
         }
@@ -322,10 +334,6 @@ public class AppointmentServiceImpl  implements AppointmentService{
 
         if (!appointment.getDoctor().getId().equals(doctor.getId())) {
             throw new AccessDeniedException("Access denied");
-        }
-
-        if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
-            throw new BusinessException("Notes can be updated only for scheduled appointments");
         }
 
         AppointmentMapper.updateNotes(appointment, request);

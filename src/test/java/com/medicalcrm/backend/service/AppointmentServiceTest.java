@@ -157,6 +157,8 @@ class AppointmentServiceTest {
     @Test
     void cancelAppointment_success() {
         mockPatientAuth();
+        appointment.setAppointmentDate(LocalDate.now().plusDays(1));
+        appointment.setAppointmentTime(LocalTime.of(10, 0));
 
         when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
         when(paymentRepository.existsByAppointmentId(10L)).thenReturn(false);
@@ -169,6 +171,8 @@ class AppointmentServiceTest {
     @Test
     void cancelAppointment_paid() {
         mockPatientAuth();
+        appointment.setAppointmentDate(LocalDate.now().plusDays(1));
+        appointment.setAppointmentTime(LocalTime.of(10, 0));
 
         when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
         when(paymentRepository.existsByAppointmentId(10L)).thenReturn(true);

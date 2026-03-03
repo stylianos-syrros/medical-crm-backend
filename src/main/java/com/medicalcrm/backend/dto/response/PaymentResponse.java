@@ -18,4 +18,5 @@ public class PaymentResponse {
     private Long appointmentId;
     private Long patientId;
     private String patientEmail;
+    private BigDecimal servicePrice;
 }

@@ -22,9 +22,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long>{
 
     boolean existsByAppointmentId(Long appointmentId);
 
-    @Query("SELECT COALESCE(SUM(p.amount),0) FROM Payment p WHERE p.appointment.doctor.id = :doctorId")
+    @Query("SELECT COALESCE(SUM(p.amount),0) FROM Payment p WHERE p.appointment.doctor.id = :doctorId AND p.appointment.status <> com.medicalcrm.backend.model.AppointmentStatus.CANCELLED")
     BigDecimal sumPaymentsToDoctor(@Param("doctorId") Long doctorId);
 
-    @Query("SELECT COALESCE(SUM(p.amount),0) FROM Payment p WHERE p.appointment.patient.id = :patientId")
+    @Query("SELECT COALESCE(SUM(p.amount),0) FROM Payment p WHERE p.appointment.patient.id = :patientId AND p.appointment.status <> com.medicalcrm.backend.model.AppointmentStatus.CANCELLED")
     BigDecimal sumPaymentsByPatient(@Param("patientId") Long patientId);
 }

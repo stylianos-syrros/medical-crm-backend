@@ -38,6 +38,7 @@ public class PaymentMapper {
         response.setAppointmentId(payment.getAppointment().getId());
         response.setPatientId(payment.getPaidBy().getId());
         response.setPatientEmail(payment.getPaidBy().getUser().getEmail());
+        response.setServicePrice(payment.getAppointment().getService().getPrice());
 
         return response;
     }

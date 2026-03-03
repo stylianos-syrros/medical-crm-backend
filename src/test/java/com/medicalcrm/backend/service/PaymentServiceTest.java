@@ -167,6 +167,19 @@ class PaymentServiceTest {
     }
 
     @Test
+    void makePayment_cancelledAppointment_throwsBusinessException() {
+        CreatePaymentRequest request = new CreatePaymentRequest();
+        request.setAppointmentId(10L);
+        request.setAmount(BigDecimal.valueOf(10));
+        request.setPaymentMethod(PaymentMethod.CARD);
+
+        appointment.setStatus(AppointmentStatus.CANCELLED);
+        when(appointmentRepository.findById(10L)).thenReturn(Optional.of(appointment));
+
+        assertThrows(BusinessException.class, () -> paymentService.makePayment(request));
+    }
+
+    @Test
     void getPaidAppointmentsByPatient_success() {
         when(appointmentRepository.findByPatientId(1L)).thenReturn(List.of(appointment));
         when(paymentRepository.sumAmountByAppointmentId(10L)).thenReturn(BigDecimal.valueOf(100));

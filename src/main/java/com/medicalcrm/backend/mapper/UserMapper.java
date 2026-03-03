@@ -10,16 +10,18 @@ public class UserMapper {
 
     public static UserResponse toResponse(User user) {
 
-        return new UserResponse(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getRole(),
-                user.getEnabled(),
-                user.getCreatedAt(),
-                false,
-                false
-        );
+        UserResponse response = new UserResponse();
+        response.setId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setEmail(user.getEmail());
+        response.setRole(user.getRole());
+        response.setEnabled(user.getEnabled());
+        response.setCreatedAt(user.getCreatedAt());
+        response.setHasDoctorProfile(false);
+        response.setHasPatientProfile(false);
+        response.setDoctorProfileId(null);
+        response.setPatientProfileId(null);
+        return response;
     }
 
     public static User toEntity(CreateUserRequest request){

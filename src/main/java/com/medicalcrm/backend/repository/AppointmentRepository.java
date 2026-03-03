@@ -66,10 +66,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             AppointmentStatus status,
             Long id);
 
-    @Query("SELECT COALESCE(SUM(a.service.price),0) FROM Appointment a WHERE a.doctor.id = :doctorId")
+    @Query("SELECT COALESCE(SUM(a.service.price),0) FROM Appointment a WHERE a.doctor.id = :doctorId AND a.status <> com.medicalcrm.backend.model.AppointmentStatus.CANCELLED")
     BigDecimal sumAppointmentPricesToDoctor(@Param("doctorId") Long doctorId);
 
-    @Query("SELECT COALESCE(SUM(a.service.price),0) FROM Appointment a WHERE a.patient.id = :patientId")
+    @Query("SELECT COALESCE(SUM(a.service.price),0) FROM Appointment a WHERE a.patient.id = :patientId AND a.status <> com.medicalcrm.backend.model.AppointmentStatus.CANCELLED")
     BigDecimal sumAppointmentPricesByPatient(@Param("patientId") Long patietId);
 
     @Query("SELECT DISTINCT a.patient FROM Appointment a WHERE a.doctor.id = :doctorId")

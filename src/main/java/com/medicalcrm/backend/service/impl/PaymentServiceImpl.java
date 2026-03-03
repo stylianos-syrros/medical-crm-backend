@@ -8,6 +8,7 @@ import com.medicalcrm.backend.exception.NotFoundException;
 import com.medicalcrm.backend.mapper.AppointmentMapper;
 import com.medicalcrm.backend.mapper.PaymentMapper;
 import com.medicalcrm.backend.model.Appointment;
+import com.medicalcrm.backend.model.AppointmentStatus;
 import com.medicalcrm.backend.model.Doctor;
 import com.medicalcrm.backend.model.Patient;
 import com.medicalcrm.backend.model.Payment;
@@ -74,6 +75,7 @@ public class PaymentServiceImpl implements PaymentService {
     public List<AppointmentResponse> getPaidAppointmentsByDoctor() {
         Doctor doctor = getCurrentDoctorEntity();
         return appointmentRepository.findByDoctorId(doctor.getId()).stream()
+                .filter(a -> a.getStatus() != AppointmentStatus.CANCELLED)
                 .filter(a -> Optional.ofNullable(paymentRepository.sumAmountByAppointmentId(a.getId()))
                         .orElse(BigDecimal.ZERO)
                         .compareTo(a.getService().getPrice()) >= 0)
@@ -86,6 +88,7 @@ public class PaymentServiceImpl implements PaymentService {
     public List<AppointmentResponse> getUnpaidAppointmentsByDoctor() {
         Doctor doctor = getCurrentDoctorEntity();
         return appointmentRepository.findByDoctorId(doctor.getId()).stream()
+                .filter(a -> a.getStatus() != AppointmentStatus.CANCELLED)
                 .filter(a -> Optional.ofNullable(paymentRepository.sumAmountByAppointmentId(a.getId()))
                         .orElse(BigDecimal.ZERO)
                         .compareTo(a.getService().getPrice()) < 0)
@@ -104,6 +107,10 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (!appointment.getPatient().getId().equals(patient.getId())) {
             throw new BusinessException("This appointment does not belong to patient");
+        }
+
+        if (appointment.getStatus() == AppointmentStatus.CANCELLED) {
+            throw new BusinessException("Cannot pay a cancelled appointment");
         }
 
         BigDecimal totalPaid = Optional.ofNullable(
@@ -141,6 +148,7 @@ public class PaymentServiceImpl implements PaymentService {
     public List<AppointmentResponse> getPaidAppointmentsByPatient() {
         Patient patient = getCurrentPatientEntity();
         return appointmentRepository.findByPatientId(patient.getId()).stream()
+                .filter(a -> a.getStatus() != AppointmentStatus.CANCELLED)
                 .filter(a -> Optional.ofNullable(paymentRepository.sumAmountByAppointmentId(a.getId()))
                         .orElse(BigDecimal.ZERO)
                         .compareTo(a.getService().getPrice()) >= 0)
@@ -153,6 +161,7 @@ public class PaymentServiceImpl implements PaymentService {
     public List<AppointmentResponse> getUnpaidAppointmentsByPatient() {
         Patient patient = getCurrentPatientEntity();
         return appointmentRepository.findByPatientId(patient.getId()).stream()
+                .filter(a -> a.getStatus() != AppointmentStatus.CANCELLED)
                 .filter(a -> Optional.ofNullable(paymentRepository.sumAmountByAppointmentId(a.getId()))
                         .orElse(BigDecimal.ZERO)
                         .compareTo(a.getService().getPrice()) < 0)

@@ -26,4 +26,8 @@ public class UserResponse {
     private boolean hasDoctorProfile;
 
     private boolean hasPatientProfile;
+
+    private Long doctorProfileId;
+
+    private Long patientProfileId;
 }
