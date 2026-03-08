@@ -23,7 +23,8 @@ public class DoctorController {
 
     @PreAuthorize("hasRole('DOCTOR')")
     @PostMapping("/me")
-    public DoctorResponse createMyProfile(@Valid @RequestBody CreateDoctorRequest request) {
+    public DoctorResponse createMyProfile(
+        @Valid @RequestBody CreateDoctorRequest request) {
         return doctorService.createMyProfile(request);
     }
 

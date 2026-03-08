@@ -40,7 +40,7 @@ public class JwtService {
 
     public Role extractRole(String token) {
         String roleName = parseToken(token).getBody().get("role", String.class);
-        return Role.valueOf(roleName.replace("ROLE_", "")); // Αντικαθιστά το "ROLE_" για να το κάνει Enum
+        return Role.valueOf(roleName.replace("ROLE_", "")); 
     }
 
     public boolean isTokenValid(String token, String username) {

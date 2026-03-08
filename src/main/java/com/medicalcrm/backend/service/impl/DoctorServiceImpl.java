@@ -112,51 +112,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .toList();
     }
 
-    /*
-    @Override
-    @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyAppointments(){
-
-        Long doctorId = getCurrentDoctorEntity().getId();
-
-        return appointmentRepository.findByDoctorId(doctorId)
-                .stream()
-                .map(AppointmentMapper::toResponse)
-                .toList();    
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyAppointmentHistory(){
-
-        Long doctorId = getCurrentDoctorEntity().getId();
-
-        return appointmentRepository
-                .findByDoctorIdAndStatus(doctorId, AppointmentStatus.COMPLETED)
-                .stream()
-                .map(AppointmentMapper::toResponse)
-                .toList();    
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<AppointmentResponse> getMyUpcomingAppointments() {
-
-        Long doctorId = getCurrentDoctorEntity().getId();
-
-        return appointmentRepository
-                .findByDoctorIdAndStatus(doctorId, AppointmentStatus.SCHEDULED)
-                .stream()
-                .map(AppointmentMapper::toResponse)
-                .toList();
-    }*/
-
     // HELPERS
-
-    /*private Doctor getDoctorEntity(Long doctorId) {
-        return doctorRepository.findById(doctorId)
-                .orElseThrow(() -> new NotFoundException("Doctor not found"));
-    }*/
 
     private Doctor getCurrentDoctorEntity() {
         String username = getCurrentUsername();

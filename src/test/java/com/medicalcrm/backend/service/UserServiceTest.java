@@ -48,8 +48,6 @@ class UserServiceTest {
     @Test
     void createUser_shouldReturnUserResponse_whenValidRequest() {
 
-        //mockAuthentication("admin", Role.ADMIN);
-
         CreateUserRequest request = new CreateUserRequest();
         request.setUsername("john");
         request.setEmail("john@test.com");
@@ -75,8 +73,6 @@ class UserServiceTest {
 
     @Test
     void createUser_shouldThrowException_whenUsernameExists() {
-
-        //mockAuthentication("admin", Role.ADMIN);
 
         CreateUserRequest request = new CreateUserRequest();
         request.setUsername("john");
